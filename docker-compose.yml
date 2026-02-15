@@ -1,0 +1,42 @@
+services:
+  # ─────────────────────────────────────────────
+  # SecAssess — DevOps Assessment Generator
+  # ─────────────────────────────────────────────
+  secassess:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: secassess-app
+    ports:
+      - "3000:8080"
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 128M
+        reservations:
+          cpus: "0.1"
+          memory: 32M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    labels:
+      - "app=secassess"
+      - "tier=frontend"
+      - "maintainer=devops-team"
+
+networks:
+  default:
+    name: secassess-network
+    driver: bridge
