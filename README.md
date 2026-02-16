@@ -1,79 +1,65 @@
-# 🛡️ SecAssess — DevOps & DevSecOps Assessment Generator
+# 🛡️ SecAssess v2 — DevOps & DevSecOps Assessment Platform
 
-A React application for generating comprehensive DevOps and DevSecOps security assessment documents. Containerized with Docker Compose and built with security best practices.
+Full-stack application for creating, managing, and exporting DevOps/DevSecOps security assessments with project planning tools.
 
 ## Features
 
-- **8 Assessment Categories** covering CI/CD, Container Security, Kubernetes, IaC, Observability, IAM, Compliance, and Supply Chain Security
-- **70+ Security Controls** mapped to DevOps and DevSecOps practices
-- **Severity-weighted scoring** (Critical, High, Medium, Low)
-- **5 Assessment Templates**: Full, DevSecOps Focus, DevOps Maturity, Critical Controls, Supply Chain
-- **Multi-format export**: HTML Report, Markdown, JSON
-- **Dark elegant UI** with responsive design
+- **Dashboard** — List, search, duplicate, delete all assessments
+- **CRUD** — Full create/read/update/delete with SQLite persistence
+- **Import/Export** — JSON, Markdown, HTML, and Excel formats
+- **70+ Security Controls** across 8 categories
+- **5 Assessment Templates** — Full, DevSecOps, DevOps, Critical, Supply Chain
+- **Pricing Estimator** — Engineers, duration, hourly rate, phase allocation
+- **Gantt Chart** — Visual remediation timeline with editable tasks
+- **Work Plan** — Milestones, team structure, risk register
+- **Dark Elegant UI**
 
 ## Quick Start
-
-### Docker Compose (Recommended)
 
 ```bash
 docker compose up --build -d
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+Open **http://localhost:3000**
 
-### Local Development
-
-```bash
-npm install
-npm start
-```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-## Container Security Features
-
-The Docker setup follows security best practices:
-
-- **Multi-stage build** — minimal production image using nginx:alpine
-- **Non-root execution** — runs as unprivileged `appuser`
-- **Read-only filesystem** — `read_only: true` with explicit tmpfs mounts
-- **Dropped capabilities** — `cap_drop: ALL` with only `NET_BIND_SERVICE`
-- **No privilege escalation** — `no-new-privileges:true`
-- **Resource limits** — CPU and memory constraints defined
-- **Security headers** — CSP, X-Frame-Options, X-Content-Type-Options, etc.
-- **Health checks** — container-level health monitoring
-- **Log rotation** — prevents unbounded log growth
-
-## Project Structure
+## Architecture
 
 ```
-├── docker-compose.yml      # Container orchestration
-├── Dockerfile              # Multi-stage build
-├── nginx.conf              # Production server with security headers
-├── package.json
-├── public/
-│   └── index.html
-└── src/
-    ├── App.js              # Main application with step navigation
-    ├── index.js
-    ├── components/
-    │   ├── ConfigStep.js   # Assessment configuration
-    │   ├── AssessmentStep.js # Checklist evaluation
-    │   └── ReviewStep.js   # Summary, breakdown, and export
-    ├── data/
-    │   └── assessmentData.js # Categories, controls, templates
-    └── styles/
-        └── App.css         # Dark elegant theme
+├── docker-compose.yml
+├── backend/          # Express + SQLite API
+│   ├── server.js     # REST endpoints, import/export
+│   └── Dockerfile
+└── frontend/         # React SPA
+    ├── src/
+    │   ├── components/
+    │   │   ├── Dashboard.js      # Assessment list + CRUD
+    │   │   ├── ConfigStep.js     # Metadata & template
+    │   │   ├── AssessmentStep.js # Security checklist
+    │   │   ├── PricingStep.js    # Cost estimation
+    │   │   ├── GanttChart.js     # Timeline planner
+    │   │   ├── WorkPlan.js       # Milestones & risks
+    │   │   └── ReviewStep.js     # Summary & export
+    │   ├── utils/
+    │   │   ├── api.js            # API client
+    │   │   └── exporters.js      # JSON/MD/HTML export
+    │   └── data/
+    │       └── assessmentData.js # Controls & templates
+    ├── nginx.conf
+    └── Dockerfile
 ```
 
-## Export Formats
+## API Endpoints
 
-| Format   | Use Case                                  |
-|----------|-------------------------------------------|
-| HTML     | Styled report for printing or sharing     |
-| Markdown | Documentation, wikis, Git repositories    |
-| JSON     | Automation, CI/CD integration, dashboards |
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /api/assessments | List all |
+| GET | /api/assessments/:id | Get one |
+| POST | /api/assessments | Create |
+| PUT | /api/assessments/:id | Update |
+| DELETE | /api/assessments/:id | Delete |
+| POST | /api/import/json | Import JSON file/data |
+| GET | /api/export/excel/:id | Download as Excel |
 
-## License
+## Data Persistence
 
-MIT
+SQLite database stored in a Docker volume (`db-data`). Data survives container restarts.
