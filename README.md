@@ -1,65 +1,60 @@
-# 🛡️ SecAssess v2 — DevOps & DevSecOps Assessment Platform
+# SecAssess v2 — DevOps & DevSecOps Assessment Platform
 
-Full-stack application for creating, managing, and exporting DevOps/DevSecOps security assessments with project planning tools.
+Full-stack security assessment platform with React, Express, PostgreSQL, and Docker.
 
-## Features
+## Architecture
 
-- **Dashboard** — List, search, duplicate, delete all assessments
-- **CRUD** — Full create/read/update/delete with SQLite persistence
-- **Import/Export** — JSON, Markdown, HTML, and Excel formats
-- **70+ Security Controls** across 8 categories
-- **5 Assessment Templates** — Full, DevSecOps, DevOps, Critical, Supply Chain
-- **Pricing Estimator** — Engineers, duration, hourly rate, phase allocation
-- **Gantt Chart** — Visual remediation timeline with editable tasks
-- **Work Plan** — Milestones, team structure, risk register
-- **Dark Elegant UI**
+```
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Frontend   │───▶│   Backend    │───▶│  PostgreSQL  │
+│ React+nginx  │    │  Express.js  │    │   16-alpine  │
+│  :3000       │    │  :4000       │    │   :5432      │
+└─────────────┘    └──────────────┘    └──────────────┘
+  Multi-stage        Multi-stage         Persistent
+  node → nginx       deps → runtime      pg-data volume
+```
 
 ## Quick Start
 
 ```bash
 docker compose up --build -d
+# Open http://localhost:3000
 ```
 
-Open **http://localhost:3000**
+## Services
 
-## Architecture
+| Service    | Image              | Port | Purpose           |
+|------------|--------------------|------|-------------------|
+| postgres   | postgres:16-alpine | 5432 | Database (JSONB)  |
+| backend    | node:20-alpine     | 4000 | REST API          |
+| frontend   | nginx:1.27-alpine  | 3000 | React SPA + proxy |
 
-```
-├── docker-compose.yml
-├── backend/          # Express + SQLite API
-│   ├── server.js     # REST endpoints, import/export
-│   └── Dockerfile
-└── frontend/         # React SPA
-    ├── src/
-    │   ├── components/
-    │   │   ├── Dashboard.js      # Assessment list + CRUD
-    │   │   ├── ConfigStep.js     # Metadata & template
-    │   │   ├── AssessmentStep.js # Security checklist
-    │   │   ├── PricingStep.js    # Cost estimation
-    │   │   ├── GanttChart.js     # Timeline planner
-    │   │   ├── WorkPlan.js       # Milestones & risks
-    │   │   └── ReviewStep.js     # Summary & export
-    │   ├── utils/
-    │   │   ├── api.js            # API client
-    │   │   └── exporters.js      # JSON/MD/HTML export
-    │   └── data/
-    │       └── assessmentData.js # Controls & templates
-    ├── nginx.conf
-    └── Dockerfile
-```
+## Features
 
-## API Endpoints
+- **Dashboard** — Browse, search, duplicate, delete assessments
+- **Configure** — Org metadata, custom templates with category builder
+- **Assess** — 70+ security controls, floating collapse/scroll buttons
+- **Pricing** — Multi-currency (ILS default), phase allocation
+- **Gantt** — Drag-drop reorder, custom categories, timeline
+- **Work Plan** — Milestones, team roles, risk register
+- **Export** — JSON, Markdown, HTML, Excel
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/assessments | List all |
-| GET | /api/assessments/:id | Get one |
-| POST | /api/assessments | Create |
-| PUT | /api/assessments/:id | Update |
-| DELETE | /api/assessments/:id | Delete |
-| POST | /api/import/json | Import JSON file/data |
-| GET | /api/export/excel/:id | Download as Excel |
+## Environment Variables
+
+| Variable  | Default    | Description          |
+|-----------|------------|----------------------|
+| PORT      | 4000       | Backend port         |
+| DB_HOST   | postgres   | PostgreSQL host      |
+| DB_PORT   | 5432       | PostgreSQL port      |
+| DB_NAME   | secassess  | Database name        |
+| DB_USER   | secassess  | Database user        |
+| DB_PASS   | secassess  | Database password    |
 
 ## Data Persistence
 
-SQLite database stored in a Docker volume (`db-data`). Data survives container restarts.
+PostgreSQL data persists in Docker volume `pg-data`. To reset:
+
+```bash
+docker compose down -v  # removes volumes
+docker compose up --build -d
+```

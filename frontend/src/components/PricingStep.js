@@ -1,12 +1,24 @@
 import React from 'react';
 
+const CURRENCIES = [
+  { code: 'ILS', symbol: '₪', name: 'Israeli Shekel' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+  { code: 'CHF', symbol: 'CHF', name: 'Swiss Franc' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+];
+
 const defaultPricing = {
   engineers: 2,
   duration: 6,
-  hourlyRate: 120,
+  hourlyRate: 350,
   monthlyRate: 0,
   contingency: 15,
   totalCost: 0,
+  currency: 'ILS',
   phases: [
     { name: 'Assessment & Planning', percentage: 15, months: 1 },
     { name: 'CI/CD & Pipeline Hardening', percentage: 20, months: 1.5 },
@@ -17,10 +29,11 @@ const defaultPricing = {
   ],
 };
 
-const PricingStep = ({ pricing, setPricing }) => {
+const PricingStep = ({ pricing, setPricing, toast }) => {
   const p = { ...defaultPricing, ...pricing };
+  const cur = CURRENCIES.find(c => c.code === p.currency) || CURRENCIES[0];
 
-  const monthlyRate = p.hourlyRate * 160; // 160 hrs/month
+  const monthlyRate = p.hourlyRate * 160;
   const baseCost = monthlyRate * p.engineers * p.duration;
   const contingencyAmt = baseCost * (p.contingency / 100);
   const totalCost = baseCost + contingencyAmt;
@@ -39,6 +52,7 @@ const PricingStep = ({ pricing, setPricing }) => {
   const addPhase = () => {
     const phases = [...(p.phases || []), { name: 'New Phase', percentage: 0, months: 1 }];
     setPricing({ ...p, phases });
+    toast && toast('Phase added', 'success');
   };
 
   const removePhase = (idx) => {
@@ -47,6 +61,7 @@ const PricingStep = ({ pricing, setPricing }) => {
   };
 
   const totalPct = (p.phases || []).reduce((s, ph) => s + (Number(ph.percentage) || 0), 0);
+  const fmt = (n) => cur.symbol + n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 
   return (
     <div className="animate-in">
@@ -60,7 +75,16 @@ const PricingStep = ({ pricing, setPricing }) => {
           <h3>Resource Parameters</h3>
           <div className="pricing-fields">
             <div className="pricing-field">
-              <label>DevOps Engineers Required</label>
+              <label>Currency</label>
+              <select value={p.currency} onChange={e => upd('currency', e.target.value)}
+                style={{width:'100%',padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border-subtle)',borderRadius:'var(--radius-sm)',color:'var(--text-primary)',fontFamily:"'JetBrains Mono',monospace",fontSize:15,outline:'none',cursor:'pointer'}}>
+                {CURRENCIES.map(c => (
+                  <option key={c.code} value={c.code}>{c.symbol} {c.code} — {c.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="pricing-field">
+              <label>DevOps Engineers</label>
               <input type="number" min="1" max="50" value={p.engineers} onChange={e => upd('engineers', Number(e.target.value))} />
             </div>
             <div className="pricing-field">
@@ -68,7 +92,7 @@ const PricingStep = ({ pricing, setPricing }) => {
               <input type="number" min="1" max="60" value={p.duration} onChange={e => upd('duration', Number(e.target.value))} />
             </div>
             <div className="pricing-field">
-              <label>Hourly Rate ($)</label>
+              <label>Hourly Rate ({cur.symbol})</label>
               <input type="number" min="1" value={p.hourlyRate} onChange={e => upd('hourlyRate', Number(e.target.value))} />
             </div>
             <div className="pricing-field">
@@ -79,13 +103,13 @@ const PricingStep = ({ pricing, setPricing }) => {
         </div>
 
         <div className="pricing-card cost-summary">
-          <h3>Cost Breakdown</h3>
+          <h3>Cost Breakdown <span style={{fontSize:11,color:'var(--text-muted)',fontWeight:400,marginLeft:8}}>({cur.code})</span></h3>
           <div className="cost-rows">
-            <div className="cost-row"><span>Monthly rate per engineer</span><span className="cost-val">${monthlyRate.toLocaleString()}</span></div>
+            <div className="cost-row"><span>Monthly rate per engineer</span><span className="cost-val">{fmt(monthlyRate)}</span></div>
             <div className="cost-row"><span>Engineers × Duration</span><span className="cost-val">{p.engineers} × {p.duration} mo</span></div>
-            <div className="cost-row"><span>Base cost</span><span className="cost-val">${baseCost.toLocaleString()}</span></div>
-            <div className="cost-row"><span>Contingency ({p.contingency}%)</span><span className="cost-val">${contingencyAmt.toLocaleString()}</span></div>
-            <div className="cost-row total"><span>Total Estimation</span><span className="cost-val">${totalCost.toLocaleString()}</span></div>
+            <div className="cost-row"><span>Base cost</span><span className="cost-val">{fmt(baseCost)}</span></div>
+            <div className="cost-row"><span>Contingency ({p.contingency}%)</span><span className="cost-val">{fmt(contingencyAmt)}</span></div>
+            <div className="cost-row total"><span>Total Estimation</span><span className="cost-val">{fmt(totalCost)}</span></div>
           </div>
         </div>
       </div>
@@ -98,7 +122,7 @@ const PricingStep = ({ pricing, setPricing }) => {
       <div className="phases-table">
         <table>
           <thead>
-            <tr><th>Phase</th><th style={{ width: 100 }}>Allocation %</th><th style={{ width: 100 }}>Months</th><th style={{ width: 140 }}>Cost</th><th style={{ width: 50 }}></th></tr>
+            <tr><th>Phase</th><th style={{ width: 100 }}>Allocation %</th><th style={{ width: 100 }}>Months</th><th style={{ width: 140 }}>Cost ({cur.symbol})</th><th style={{ width: 50 }}></th></tr>
           </thead>
           <tbody>
             {(p.phases || []).map((ph, idx) => {
@@ -118,7 +142,7 @@ const PricingStep = ({ pricing, setPricing }) => {
                       style={{ width: 60, background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: 'center' }} />
                   </td>
                   <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--accent-secondary)' }}>
-                    ${phaseCost.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    {fmt(phaseCost)}
                   </td>
                   <td>
                     <button className="btn-icon danger" onClick={() => removePhase(idx)} title="Remove">✕</button>
@@ -131,7 +155,6 @@ const PricingStep = ({ pricing, setPricing }) => {
         <button className="btn btn-ghost" onClick={addPhase} style={{ marginTop: 10 }}>+ Add Phase</button>
       </div>
 
-      {/* Visual bar of phase allocations */}
       <div style={{ marginTop: 24 }}>
         <div style={{ display: 'flex', height: 32, borderRadius: 'var(--radius-md)', overflow: 'hidden', background: 'var(--bg-secondary)' }}>
           {(p.phases || []).map((ph, i) => (

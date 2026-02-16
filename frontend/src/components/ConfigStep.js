@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { frameworkTemplates as builtinTemplates } from '../data/assessmentData';
+import { frameworkTemplates as builtinTemplates, assessmentCategories } from '../data/assessmentData';
 
 const TEMPLATE_COLORS = [
   '#6c5ce7','#00cec9','#fd79a8','#ffd166','#ff8c42','#a29bfe',
@@ -7,12 +7,15 @@ const TEMPLATE_COLORS = [
   '#74b9ff','#fab1a0','#636e72','#dfe6e9',
 ];
 
+const SEVERITY_OPTIONS = ['critical','high','medium','low'];
+
 const ConfigStep = ({ config, setConfig, toast }) => {
   const customTemplates = config.custom_templates || [];
   const [showEditor, setShowEditor] = useState(false);
-  const [editIdx, setEditIdx] = useState(null); // null = new, index = editing
-  const [editForm, setEditForm] = useState({ id: '', name: '', description: '', color: '#6c5ce7', filterType: 'all' });
+  const [editIdx, setEditIdx] = useState(null);
+  const [editForm, setEditForm] = useState({ id:'', name:'', description:'', color:'#6c5ce7', filterType:'all', selectedCategories:[], customCategories:[] });
   const [errors, setErrors] = useState({});
+  const [newItemForm, setNewItemForm] = useState({ catIdx: null, text: '', severity: 'medium', tags: 'devsecops' });
 
   const allTemplates = [
     ...builtinTemplates.map(t => ({ ...t, builtin: true, color: '#6c5ce7' })),
@@ -23,17 +26,90 @@ const ConfigStep = ({ config, setConfig, toast }) => {
 
   const openNewTemplate = () => {
     setEditIdx(null);
-    setEditForm({ id: '', name: '', description: '', color: TEMPLATE_COLORS[customTemplates.length % TEMPLATE_COLORS.length], filterType: 'all' });
+    setEditForm({
+      id: '', name: '', description: '',
+      color: TEMPLATE_COLORS[customTemplates.length % TEMPLATE_COLORS.length],
+      filterType: 'categories',
+      selectedCategories: assessmentCategories.map(c => c.id),
+      customCategories: [],
+    });
     setErrors({});
+    setNewItemForm({ catIdx: null, text: '', severity: 'medium', tags: 'devsecops' });
     setShowEditor(true);
   };
 
   const openEditTemplate = (idx) => {
     const t = customTemplates[idx];
     setEditIdx(idx);
-    setEditForm({ ...t });
+    setEditForm({
+      ...t,
+      filterType: t.filterType || 'categories',
+      selectedCategories: t.selectedCategories || assessmentCategories.map(c => c.id),
+      customCategories: t.customCategories || [],
+    });
     setErrors({});
+    setNewItemForm({ catIdx: null, text: '', severity: 'medium', tags: 'devsecops' });
     setShowEditor(true);
+  };
+
+  const toggleCategory = (catId) => {
+    setEditForm(p => {
+      const sel = p.selectedCategories || [];
+      return { ...p, selectedCategories: sel.includes(catId) ? sel.filter(c => c !== catId) : [...sel, catId] };
+    });
+  };
+
+  // Custom category management
+  const addCustomCategory = () => {
+    setEditForm(p => ({
+      ...p,
+      customCategories: [...(p.customCategories || []), {
+        id: 'custom-' + Date.now(),
+        title: 'New Category',
+        icon: '📌',
+        description: 'Custom assessment category',
+        items: [],
+      }],
+    }));
+  };
+
+  const updateCustomCategory = (idx, field, value) => {
+    setEditForm(p => {
+      const cats = [...(p.customCategories || [])];
+      cats[idx] = { ...cats[idx], [field]: value };
+      return { ...p, customCategories: cats };
+    });
+  };
+
+  const removeCustomCategory = (idx) => {
+    setEditForm(p => ({
+      ...p,
+      customCategories: (p.customCategories || []).filter((_, i) => i !== idx),
+    }));
+  };
+
+  const addItemToCustomCategory = (catIdx) => {
+    if (!newItemForm.text.trim()) { setErrors(p => ({...p, newItem: 'Item text is required'})); return; }
+    setEditForm(p => {
+      const cats = [...(p.customCategories || [])];
+      const cat = { ...cats[catIdx] };
+      const itemId = cat.id + '-' + (cat.items.length + 1);
+      cat.items = [...cat.items, { id: itemId, text: newItemForm.text.trim(), severity: newItemForm.severity, tags: newItemForm.tags.split(',').map(t => t.trim()).filter(Boolean) }];
+      cats[catIdx] = cat;
+      return { ...p, customCategories: cats };
+    });
+    setNewItemForm({ catIdx, text: '', severity: 'medium', tags: 'devsecops' });
+    setErrors(p => { const { newItem, ...rest } = p; return rest; });
+  };
+
+  const removeItemFromCategory = (catIdx, itemIdx) => {
+    setEditForm(p => {
+      const cats = [...(p.customCategories || [])];
+      const cat = { ...cats[catIdx] };
+      cat.items = cat.items.filter((_, i) => i !== itemIdx);
+      cats[catIdx] = cat;
+      return { ...p, customCategories: cats };
+    });
   };
 
   const validateTemplate = () => {
@@ -42,20 +118,14 @@ const ConfigStep = ({ config, setConfig, toast }) => {
     const id = editForm.id.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
     if (!name) errs.name = 'Name is required';
     if (name.length > 60) errs.name = 'Max 60 characters';
-
-    // Check uniqueness
-    const allIds = [
-      ...builtinTemplates.map(t => t.id),
-      ...customTemplates.filter((_, i) => i !== editIdx).map(t => t.id),
-    ];
-    const allNames = [
-      ...builtinTemplates.map(t => t.name.toLowerCase()),
-      ...customTemplates.filter((_, i) => i !== editIdx).map(t => t.name.toLowerCase()),
-    ];
+    const allIds = [...builtinTemplates.map(t => t.id), ...customTemplates.filter((_, i) => i !== editIdx).map(t => t.id)];
+    const allNames = [...builtinTemplates.map(t => t.name.toLowerCase()), ...customTemplates.filter((_, i) => i !== editIdx).map(t => t.name.toLowerCase())];
     if (allIds.includes(id)) errs.name = 'A template with this ID already exists';
     if (allNames.includes(name.toLowerCase())) errs.name = 'A template with this name already exists';
     if (!editForm.description.trim()) errs.description = 'Description is required';
-
+    if (editForm.filterType === 'categories' && (editForm.selectedCategories || []).length === 0 && (editForm.customCategories || []).length === 0) {
+      errs.categories = 'Select at least one category or add a custom one';
+    }
     setErrors(errs);
     return Object.keys(errs).length === 0;
   };
@@ -64,7 +134,12 @@ const ConfigStep = ({ config, setConfig, toast }) => {
     if (!validateTemplate()) return;
     const name = editForm.name.trim();
     const id = editForm.id.trim() || name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
-    const tpl = { id, name, description: editForm.description.trim(), color: editForm.color, filterType: editForm.filterType };
+    const tpl = {
+      id, name, description: editForm.description.trim(), color: editForm.color,
+      filterType: editForm.filterType,
+      selectedCategories: editForm.selectedCategories || [],
+      customCategories: editForm.customCategories || [],
+    };
     let next;
     if (editIdx !== null) {
       next = customTemplates.map((t, i) => i === editIdx ? tpl : t);
@@ -85,6 +160,13 @@ const ConfigStep = ({ config, setConfig, toast }) => {
     if (config.template === tpl.id) u('template', 'full');
     toast && toast('Template deleted', 'success');
     setShowEditor(false);
+  };
+
+  const catCount = (t) => {
+    if (t.builtin) return null;
+    const sel = (t.selectedCategories || []).length;
+    const cust = (t.customCategories || []).length;
+    return sel + cust;
   };
 
   return (
@@ -138,25 +220,40 @@ const ConfigStep = ({ config, setConfig, toast }) => {
               )}
             </div>
             <p>{t.description}</p>
-            {t.builtin && <span style={{fontSize:10,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace",marginTop:4,display:'inline-block'}}>BUILT-IN</span>}
+            <div style={{display:'flex',gap:8,marginTop:6,alignItems:'center'}}>
+              {t.builtin && <span style={{fontSize:10,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace"}}>BUILT-IN</span>}
+              {!t.builtin && catCount(t) !== null && <span style={{fontSize:10,color:'var(--text-accent)',fontFamily:"'JetBrains Mono',monospace"}}>{catCount(t)} categories</span>}
+            </div>
           </div>
         ))}
       </div>
 
-      {/* Template Editor Modal */}
+      {/* ── Template Editor Modal ── */}
       {showEditor && (
         <div className="modal-overlay" onClick={() => setShowEditor(false)}>
-          <div className="modal" onClick={e => e.stopPropagation()}>
+          <div className="modal modal-xl" onClick={e => e.stopPropagation()}>
             <div className="modal-header">
               <h3>{editIdx !== null ? 'Edit Template' : 'New Template'}</h3>
               <button className="btn-icon" onClick={() => setShowEditor(false)}>✕</button>
             </div>
             <div className="modal-body">
-              <div className="config-field">
-                <label>Name <span style={{color:'var(--severity-critical)'}}>*</span></label>
-                <input type="text" placeholder="My Custom Template" value={editForm.name}
-                  onChange={e => setEditForm(p => ({...p, name: e.target.value}))} />
-                {errors.name && <span className="field-error">{errors.name}</span>}
+              {/* Basic info */}
+              <div className="config-grid" style={{gap:12}}>
+                <div className="config-field">
+                  <label>Name <span style={{color:'var(--severity-critical)'}}>*</span></label>
+                  <input type="text" placeholder="My Custom Template" value={editForm.name}
+                    onChange={e => setEditForm(p => ({...p, name: e.target.value}))} />
+                  {errors.name && <span className="field-error">{errors.name}</span>}
+                </div>
+                <div className="config-field">
+                  <label>Color</label>
+                  <div className="color-picker-grid">
+                    {TEMPLATE_COLORS.map(c => (
+                      <button key={c} type="button" className={`color-swatch ${editForm.color === c ? 'selected' : ''}`}
+                        style={{background: c}} onClick={() => setEditForm(p => ({...p, color: c}))} />
+                    ))}
+                  </div>
+                </div>
               </div>
               <div className="config-field">
                 <label>Description <span style={{color:'var(--severity-critical)'}}>*</span></label>
@@ -164,37 +261,92 @@ const ConfigStep = ({ config, setConfig, toast }) => {
                   onChange={e => setEditForm(p => ({...p, description: e.target.value}))} rows={2} />
                 {errors.description && <span className="field-error">{errors.description}</span>}
               </div>
+
+              {/* Built-in categories selection */}
               <div className="config-field">
-                <label>Filter Type</label>
-                <select value={editForm.filterType} onChange={e => setEditForm(p => ({...p, filterType: e.target.value}))}>
-                  <option value="all">All Controls</option>
-                  <option value="devsecops">DevSecOps Tagged Only</option>
-                  <option value="devops">DevOps Tagged Only</option>
-                  <option value="critical-high">Critical & High Severity</option>
-                  <option value="critical">Critical Only</option>
-                </select>
-              </div>
-              <div className="config-field">
-                <label>Color</label>
-                <div className="color-picker-grid">
-                  {TEMPLATE_COLORS.map(c => (
-                    <button key={c} type="button"
-                      className={`color-swatch ${editForm.color === c ? 'selected' : ''}`}
-                      style={{background: c}}
-                      onClick={() => setEditForm(p => ({...p, color: c}))} />
-                  ))}
+                <label>Include Built-in Categories</label>
+                {errors.categories && <span className="field-error">{errors.categories}</span>}
+                <div className="cat-select-grid">
+                  {assessmentCategories.map(cat => {
+                    const selected = (editForm.selectedCategories || []).includes(cat.id);
+                    return (
+                      <button key={cat.id} type="button"
+                        className={`cat-select-chip ${selected ? 'selected' : ''}`}
+                        onClick={() => toggleCategory(cat.id)}>
+                        <span className="cat-select-icon">{cat.icon}</span>
+                        <span className="cat-select-name">{cat.title}</span>
+                        <span className="cat-select-count">{cat.items.length} items</span>
+                        <span className="cat-select-check">{selected ? '✓' : ''}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{display:'flex',gap:8,marginTop:6}}>
+                  <button type="button" className="btn btn-ghost" style={{fontSize:12}} onClick={() => setEditForm(p => ({...p, selectedCategories: assessmentCategories.map(c => c.id)}))}>Select All</button>
+                  <button type="button" className="btn btn-ghost" style={{fontSize:12}} onClick={() => setEditForm(p => ({...p, selectedCategories: []}))}>Clear All</button>
                 </div>
               </div>
+
+              {/* Custom categories */}
+              <div className="config-field">
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <label>Custom Categories</label>
+                  <button type="button" className="btn btn-ghost" style={{fontSize:12}} onClick={addCustomCategory}>+ Add Category</button>
+                </div>
+                {(editForm.customCategories || []).length === 0 && (
+                  <p style={{fontSize:13,color:'var(--text-muted)',padding:'12px 0'}}>No custom categories. Add one to create your own controls.</p>
+                )}
+                {(editForm.customCategories || []).map((cat, catIdx) => (
+                  <div key={cat.id} className="custom-cat-card">
+                    <div className="custom-cat-header">
+                      <input type="text" value={cat.icon} style={{width:40,textAlign:'center',fontSize:18,background:'var(--bg-input)',border:'1px solid var(--border-subtle)',borderRadius:6,padding:4}}
+                        onChange={e => updateCustomCategory(catIdx, 'icon', e.target.value)} />
+                      <input type="text" value={cat.title} placeholder="Category name" className="inline-input" style={{flex:1,fontWeight:600,fontSize:14}}
+                        onChange={e => updateCustomCategory(catIdx, 'title', e.target.value)} />
+                      <button className="btn-icon danger" style={{width:28,height:28}} onClick={() => removeCustomCategory(catIdx)} title="Remove category">✕</button>
+                    </div>
+                    <input type="text" value={cat.description} placeholder="Category description..." className="inline-input" style={{fontSize:12,color:'var(--text-secondary)',marginBottom:8}}
+                      onChange={e => updateCustomCategory(catIdx, 'description', e.target.value)} />
+
+                    {/* Items list */}
+                    {cat.items.length > 0 && (
+                      <div className="custom-cat-items">
+                        {cat.items.map((item, itemIdx) => (
+                          <div key={item.id} className="custom-cat-item">
+                            <span className={`severity-dot sev-${item.severity}`} />
+                            <span style={{flex:1,fontSize:12}}>{item.text}</span>
+                            <span style={{fontSize:10,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace"}}>{item.severity}</span>
+                            <button className="btn-icon danger" style={{width:22,height:22,fontSize:10}} onClick={() => removeItemFromCategory(catIdx, itemIdx)}>✕</button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add item */}
+                    <div className="custom-cat-add-item">
+                      <input type="text" placeholder="New control item text..." value={newItemForm.catIdx === catIdx ? newItemForm.text : ''}
+                        className="inline-input" style={{flex:1}}
+                        onFocus={() => setNewItemForm(p => ({...p, catIdx}))}
+                        onChange={e => setNewItemForm(p => ({...p, catIdx, text: e.target.value}))} />
+                      <select value={newItemForm.catIdx === catIdx ? newItemForm.severity : 'medium'}
+                        style={{padding:'4px 8px',background:'var(--bg-input)',border:'1px solid var(--border-subtle)',borderRadius:4,color:'var(--text-primary)',fontSize:11,fontFamily:"'JetBrains Mono',monospace"}}
+                        onChange={e => setNewItemForm(p => ({...p, severity: e.target.value}))}>
+                        {SEVERITY_OPTIONS.map(s => <option key={s} value={s}>{s}</option>)}
+                      </select>
+                      <button type="button" className="btn btn-ghost" style={{fontSize:11,padding:'4px 10px'}} onClick={() => addItemToCustomCategory(catIdx)}>+ Add</button>
+                    </div>
+                    {errors.newItem && newItemForm.catIdx === catIdx && <span className="field-error">{errors.newItem}</span>}
+                  </div>
+                ))}
+              </div>
             </div>
+
             <div className="modal-footer">
               {editIdx !== null && (
-                <button className="btn btn-ghost" style={{color:'var(--severity-critical)',marginRight:'auto'}}
-                  onClick={() => deleteTemplate(editIdx)}>Delete</button>
+                <button className="btn btn-ghost" style={{color:'var(--severity-critical)',marginRight:'auto'}} onClick={() => deleteTemplate(editIdx)}>Delete</button>
               )}
               <button className="btn btn-secondary" onClick={() => setShowEditor(false)}>Cancel</button>
-              <button className="btn btn-primary" onClick={saveTemplate}>
-                {editIdx !== null ? 'Update' : 'Create'}
-              </button>
+              <button className="btn btn-primary" onClick={saveTemplate}>{editIdx !== null ? 'Update' : 'Create'}</button>
             </div>
           </div>
         </div>

@@ -1,21 +1,43 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secassess-db
+    environment:
+      POSTGRES_DB: secassess
+      POSTGRES_USER: secassess
+      POSTGRES_PASSWORD: secassess
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secassess -d secassess"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     container_name: secassess-api
-    volumes:
-      - db-data:/app/data
     environment:
-      - PORT=4000
-      - DB_PATH=/app/data/assessments.db
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: secassess
+      DB_USER: secassess
+      DB_PASS: secassess
+    depends_on:
+      postgres:
+        condition: service_healthy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)throw 1;process.exit(0)}).catch(()=>process.exit(1))"]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 15s
+      start_period: 10s
 
   frontend:
     build:
@@ -30,5 +52,5 @@ services:
     restart: unless-stopped
 
 volumes:
-  db-data:
+  pg-data:
     driver: local
