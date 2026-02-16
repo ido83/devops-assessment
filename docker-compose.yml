@@ -1,42 +1,56 @@
 services:
-  # ─────────────────────────────────────────────
-  # SecAssess — DevOps Assessment Generator
-  # ─────────────────────────────────────────────
-  secassess:
+  postgres:
+    image: postgres:16-alpine
+    container_name: secassess-db
+    environment:
+      POSTGRES_DB: secassess
+      POSTGRES_USER: secassess
+      POSTGRES_PASSWORD: secassess
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U secassess -d secassess"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 10s
+
+  backend:
     build:
-      context: .
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: secassess-api
+    environment:
+      PORT: 4000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: secassess
+      DB_USER: secassess
+      DB_PASS: secassess
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)throw 1;process.exit(0)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  frontend:
+    build:
+      context: ./frontend
       dockerfile: Dockerfile
     container_name: secassess-app
     ports:
       - "3000:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
     restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:8080/"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    deploy:
-      resources:
-        limits:
-          cpus: "0.5"
-          memory: 128M
-        reservations:
-          cpus: "0.1"
-          memory: 32M
-    logging:
-      driver: json-file
-      options:
-        max-size: "10m"
-        max-file: "3"
-    labels:
-      - "app=secassess"
-      - "tier=frontend"
-      - "maintainer=devops-team"
 
-networks:
-  default:
-    name: secassess-network
-    driver: bridge
+volumes:
+  pg-data:
+    driver: local

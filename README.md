@@ -1,79 +1,60 @@
-# 🛡️ SecAssess — DevOps & DevSecOps Assessment Generator
+# SecAssess v2 — DevOps & DevSecOps Assessment Platform
 
-A React application for generating comprehensive DevOps and DevSecOps security assessment documents. Containerized with Docker Compose and built with security best practices.
+Full-stack security assessment platform with React, Express, PostgreSQL, and Docker.
 
-## Features
+## Architecture
 
-- **8 Assessment Categories** covering CI/CD, Container Security, Kubernetes, IaC, Observability, IAM, Compliance, and Supply Chain Security
-- **70+ Security Controls** mapped to DevOps and DevSecOps practices
-- **Severity-weighted scoring** (Critical, High, Medium, Low)
-- **5 Assessment Templates**: Full, DevSecOps Focus, DevOps Maturity, Critical Controls, Supply Chain
-- **Multi-format export**: HTML Report, Markdown, JSON
-- **Dark elegant UI** with responsive design
+```
+┌─────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Frontend   │───▶│   Backend    │───▶│  PostgreSQL  │
+│ React+nginx  │    │  Express.js  │    │   16-alpine  │
+│  :3000       │    │  :4000       │    │   :5432      │
+└─────────────┘    └──────────────┘    └──────────────┘
+  Multi-stage        Multi-stage         Persistent
+  node → nginx       deps → runtime      pg-data volume
+```
 
 ## Quick Start
 
-### Docker Compose (Recommended)
-
 ```bash
 docker compose up --build -d
+# Open http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000)
+## Services
 
-### Local Development
+| Service    | Image              | Port | Purpose           |
+|------------|--------------------|------|-------------------|
+| postgres   | postgres:16-alpine | 5432 | Database (JSONB)  |
+| backend    | node:20-alpine     | 4000 | REST API          |
+| frontend   | nginx:1.27-alpine  | 3000 | React SPA + proxy |
+
+## Features
+
+- **Dashboard** — Browse, search, duplicate, delete assessments
+- **Configure** — Org metadata, custom templates with category builder
+- **Assess** — 70+ security controls, floating collapse/scroll buttons
+- **Pricing** — Multi-currency (ILS default), phase allocation
+- **Gantt** — Drag-drop reorder, custom categories, timeline
+- **Work Plan** — Milestones, team roles, risk register
+- **Export** — JSON, Markdown, HTML, Excel
+
+## Environment Variables
+
+| Variable  | Default    | Description          |
+|-----------|------------|----------------------|
+| PORT      | 4000       | Backend port         |
+| DB_HOST   | postgres   | PostgreSQL host      |
+| DB_PORT   | 5432       | PostgreSQL port      |
+| DB_NAME   | secassess  | Database name        |
+| DB_USER   | secassess  | Database user        |
+| DB_PASS   | secassess  | Database password    |
+
+## Data Persistence
+
+PostgreSQL data persists in Docker volume `pg-data`. To reset:
 
 ```bash
-npm install
-npm start
+docker compose down -v  # removes volumes
+docker compose up --build -d
 ```
-
-Open [http://localhost:3000](http://localhost:3000)
-
-## Container Security Features
-
-The Docker setup follows security best practices:
-
-- **Multi-stage build** — minimal production image using nginx:alpine
-- **Non-root execution** — runs as unprivileged `appuser`
-- **Read-only filesystem** — `read_only: true` with explicit tmpfs mounts
-- **Dropped capabilities** — `cap_drop: ALL` with only `NET_BIND_SERVICE`
-- **No privilege escalation** — `no-new-privileges:true`
-- **Resource limits** — CPU and memory constraints defined
-- **Security headers** — CSP, X-Frame-Options, X-Content-Type-Options, etc.
-- **Health checks** — container-level health monitoring
-- **Log rotation** — prevents unbounded log growth
-
-## Project Structure
-
-```
-├── docker-compose.yml      # Container orchestration
-├── Dockerfile              # Multi-stage build
-├── nginx.conf              # Production server with security headers
-├── package.json
-├── public/
-│   └── index.html
-└── src/
-    ├── App.js              # Main application with step navigation
-    ├── index.js
-    ├── components/
-    │   ├── ConfigStep.js   # Assessment configuration
-    │   ├── AssessmentStep.js # Checklist evaluation
-    │   └── ReviewStep.js   # Summary, breakdown, and export
-    ├── data/
-    │   └── assessmentData.js # Categories, controls, templates
-    └── styles/
-        └── App.css         # Dark elegant theme
-```
-
-## Export Formats
-
-| Format   | Use Case                                  |
-|----------|-------------------------------------------|
-| HTML     | Styled report for printing or sharing     |
-| Markdown | Documentation, wikis, Git repositories    |
-| JSON     | Automation, CI/CD integration, dashboards |
-
-## License
-
-MIT
