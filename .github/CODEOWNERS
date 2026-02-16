@@ -1,0 +1,9 @@
+
+# Each line is a file pattern followed by one or more owners.
+
+# Default owners for everything in the repo
+* @ido83
+
+# Specific owners for the documentation folder
+/docs/  @ido83
+
