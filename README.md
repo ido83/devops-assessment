@@ -48,8 +48,9 @@ secassess/
 │   └── public/
 │       └── index.html
 ├── docker-compose.yml          # 3-service stack (postgres, backend, frontend)
-├── .env.example                # Template for secrets — copy to .env
-├── .gitignore                  # Excludes .env, node_modules, build
+├── secrets/
+│   └── db_pass.txt.example     # Copy to db_pass.txt — set a strong password (gitignored)
+├── .gitignore                  # Excludes .env, secrets/*.txt, node_modules, build
 └── README.md                   # This file
 ```
 
@@ -62,24 +63,36 @@ secassess/
 ### Docker (recommended)
 
 ```bash
-# 1. Clone and configure
+# 1. Clone
 git clone <repo-url> && cd secassess
-cp .env.example .env
-# Edit .env — set DB_PASS to a strong password
 
-# 2. Start all services
+# 2. Create .env with non-sensitive config
+cat > .env <<EOF
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=<your_db_name>
+DB_USER=<your_db_user>
+PORT=4000
+EOF
+
+# 3. Create the DB password secret (never committed)
+cp secrets/db_pass.txt.example secrets/db_pass.txt
+# Edit secrets/db_pass.txt — replace placeholder with a strong password
+# Tip: openssl rand -base64 24
+
+# 4. Start all services
 docker compose up -d
 
-# 3. Open browser
+# 5. Open browser
 open http://localhost:3000
 ```
 
-### Local Development
+### Local Development (without Docker)
 
 ```bash
 # Backend
 cd backend && npm install
-DB_HOST=localhost DB_PASS=yourpassword node server.js
+DB_HOST=localhost DB_NAME=<your_db_name> DB_USER=<your_db_user> DB_PASS=<your_password> node server.js
 
 # Frontend (separate terminal)
 cd frontend && npm install --legacy-peer-deps
@@ -134,7 +147,9 @@ REACT_APP_API_URL=http://localhost:4000/api npm start
 
 ## 🔒 Security
 
-- **No hardcoded secrets** — all credentials via `.env` file
+- **Docker secrets** — DB password loaded from `secrets/db_pass.txt` mounted at `/run/secrets/db_pass`; never exposed via environment variables or `docker inspect`
+- **No hardcoded fallbacks** — missing credentials cause a hard failure, not silent use of a default
+- **Gitignored secrets** — `.env` and `secrets/*.txt` are excluded from version control; only `secrets/db_pass.txt.example` (placeholder) is committed
 - **Input validation** — `san()` sanitizes all text inputs
 - **Parameterized queries** — prevents SQL injection (uses `$1, $2...` placeholders)
 - **CI/CD gates** — Gitleaks (secret scanning), Semgrep (SAST), npm audit (SCA)
