@@ -11,6 +11,11 @@ const ExcelJS = require('exceljs');
 const PDFDocument = require('pdfkit');
 const archiver = require('archiver');
 
+const fs = require('fs');
+function readSecret(name) {
+  try { return fs.readFileSync(`/run/secrets/${name}`, 'utf8').trim(); } catch { return undefined; }
+}
+
 const app = express();
 const PORT = process.env.PORT || 4000;
 app.use(cors());
@@ -23,7 +28,7 @@ app.get('/api/health', (_req, res) => res.json({ ok: true, db: dbReady }));
 const pool = new Pool({
   host: process.env.DB_HOST || 'postgres', port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'secassess', user: process.env.DB_USER || 'secassess',
-  password: process.env.DB_PASS || 'secassess', max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000,
+  password: readSecret('db_pass') ?? process.env.DB_PASS, max: 20, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000,
 });
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 function genId() { return crypto.randomUUID(); }

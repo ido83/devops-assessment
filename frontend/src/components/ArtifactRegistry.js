@@ -75,7 +75,7 @@ function TreeNode({ node, depth=0, onEdit, onAdd, onDelete }) {
   const hasKids = node.children && node.children.length > 0;
   // File type icon detection
   const getIcon = (n) => {
-    if (hasKids || n.children?.length > 0) return '📂';
+    if (n.children !== undefined) return '📂';
     const name = (n.name || '').toLowerCase();
     if (/dockerfile|\.docker|docker/i.test(name)) return '🐳';
     if (/\.jar$|\.war$|\.class$/i.test(name)) return '☕';
