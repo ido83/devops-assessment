@@ -15,6 +15,13 @@ const ConfigStep = ({ config, setConfig, toast }) => {
   const [editIdx, setEditIdx] = useState(null);
   const [editForm, setEditForm] = useState({ id:'', name:'', description:'', color:'#6c5ce7', filterType:'all', selectedCategories:[], customCategories:[] });
   const [errors, setErrors] = useState({});
+  const [fieldTouched, setFieldTouched] = useState({});
+  const touch = (field) => setFieldTouched(p => ({...p, [field]: true}));
+  const getMandatoryError = (field, value) => {
+    if (!fieldTouched[field]) return null;
+    if (!value?.trim()) return 'This field is required';
+    return null;
+  };
   const [newItemForm, setNewItemForm] = useState({ catIdx: null, text: '', severity: 'medium', tags: 'devsecops' });
 
   const allTemplates = [
@@ -175,15 +182,30 @@ const ConfigStep = ({ config, setConfig, toast }) => {
       <div className="config-grid">
         <div className="config-field">
           <label>Organization Name <span style={{color:'var(--severity-critical)'}}>*</span></label>
-          <input type="text" placeholder="e.g. Acme Corp" value={config.org_name} onChange={e => u('org_name', e.target.value)} />
+          <input type="text" placeholder="My Organization" value={config.org_name}
+            onChange={e => u('org_name', e.target.value)}
+            onBlur={() => touch('org_name')}
+            style={{borderColor: getMandatoryError('org_name', config.org_name) ? 'var(--severity-critical)' : undefined}}
+          />
+          {getMandatoryError('org_name', config.org_name) && <span className="field-error">⚠ {getMandatoryError('org_name', config.org_name)}</span>}
         </div>
         <div className="config-field">
           <label>Assessor <span style={{color:'var(--severity-critical)'}}>*</span></label>
-          <input type="text" placeholder="e.g. Jane Smith" value={config.assessor_name} onChange={e => u('assessor_name', e.target.value)} />
+          <input type="text" placeholder="Your Name" value={config.assessor_name}
+            onChange={e => u('assessor_name', e.target.value)}
+            onBlur={() => touch('assessor_name')}
+            style={{borderColor: getMandatoryError('assessor_name', config.assessor_name) ? 'var(--severity-critical)' : undefined}}
+          />
+          {getMandatoryError('assessor_name', config.assessor_name) && <span className="field-error">⚠ {getMandatoryError('assessor_name', config.assessor_name)}</span>}
         </div>
         <div className="config-field">
           <label>Date <span style={{color:'var(--severity-critical)'}}>*</span></label>
-          <input type="date" value={config.assessment_date} onChange={e => u('assessment_date', e.target.value)} />
+          <input type="date" value={config.assessment_date}
+            onChange={e => u('assessment_date', e.target.value)}
+            onBlur={() => touch('assessment_date')}
+            style={{borderColor: (fieldTouched.assessment_date && !config.assessment_date) ? 'var(--severity-critical)' : undefined}}
+          />
+          {fieldTouched.assessment_date && !config.assessment_date && <span className="field-error">⚠ This field is required</span>}
         </div>
         <div className="config-field"><label>Environment</label>
           <select value={config.environment} onChange={e => u('environment', e.target.value)}>

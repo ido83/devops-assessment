@@ -1,5 +1,9 @@
 node_modules
-data
 .git
+.gitignore
 .env
+.env.*
 *.md
+data/*.db
+.vscode
+.idea

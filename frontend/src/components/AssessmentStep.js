@@ -132,8 +132,8 @@ const AssessmentStep = ({ config, responses, setResponses }) => {
         );
       })}
 
-      {/* Floating toolbar — always visible */}
-      <div className="fab-toolbar">
+      {/* Floating toolbar — fixed right side, vertically centered */}
+      <div className="fab-toolbar fab-toolbar-side">
         <button className="fab-btn" onClick={() => scrollTo('top')} title="Scroll to top">
           <span className="fab-icon">↑</span><span className="fab-label">Top</span>
         </button>

@@ -1,16 +1,16 @@
 {
   "name": "secassess-api",
-  "version": "2.1.0",
+  "version": "16.0.0",
   "private": true,
   "engines": { "node": ">=20.0.0" },
-  "scripts": {
-    "start": "node server.js"
-  },
+  "scripts": { "start": "node server.js" },
   "dependencies": {
     "express": "^5.2.1",
     "cors": "^2.8.6",
     "pg": "^8.18.0",
     "multer": "^1.4.5-lts.2",
-    "exceljs": "^4.4.0"
+    "exceljs": "^4.4.0",
+    "pdfkit": "^0.16.0",
+    "archiver": "^7.0.1"
   }
 }
