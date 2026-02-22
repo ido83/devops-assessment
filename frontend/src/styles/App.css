@@ -146,7 +146,6 @@ body::before {
 .main-content {
   flex: 1;
   padding: 32px 40px;
-  padding-right: 88px; /* reserve space for FAB toolbar on right */
   max-width: 1440px;
   margin: 0 auto;
   width: 100%;
@@ -1189,8 +1188,13 @@ body::before {
 .btn-xs { font-size:11px !important; padding:4px 10px !important; }
 
 /* ═══════════ FLOATING TOOLBAR ═══════════ */
-.fab-toolbar { position:fixed; right:16px; bottom:80px; z-index:200; display:flex; flex-direction:column; align-items:center; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-xl); padding:6px; box-shadow:0 8px 32px rgba(0,0,0,.5); backdrop-filter:blur(12px); pointer-events:all; }
-.fab-toolbar.fab-toolbar-side { right:16px; bottom:80px; padding:4px; }
+.fab-toolbar { z-index:200; display:flex; flex-direction:column; align-items:center; background:var(--bg-card); border:1px solid var(--border-subtle); border-radius:var(--radius-xl); padding:6px; box-shadow:0 8px 32px rgba(0,0,0,.5); backdrop-filter:blur(12px); }
+.fab-toolbar.fab-toolbar-side { padding:4px; }
+
+/* ═══════════ ASSESSMENT LAYOUT ═══════════ */
+.assessment-layout { display:flex; align-items:flex-start; gap:0; }
+.assessment-content { flex:1; min-width:0; }
+.assessment-sidebar { flex-shrink:0; align-self:flex-start; position:sticky; top:calc(50vh - 85px); padding-left:12px; }
 .fab-btn { display:flex; flex-direction:column; align-items:center; gap:2px; padding:10px 12px; border:none; background:transparent; color:var(--text-secondary); cursor:pointer; border-radius:var(--radius-md); transition:all .2s; min-width:56px; }
 .fab-btn:hover { background:var(--accent-primary); color:white; }
 .fab-icon { font-size:20px; font-weight:700; line-height:1; }
@@ -1246,7 +1250,7 @@ body::before {
   .toast-container { top:10px; left:50%; transform:translateX(-50%); width:calc(100% - 24px); align-items:stretch; }
   .toast { min-width:auto; font-size:14px; padding:12px 20px; }
   .cat-select-grid { grid-template-columns:1fr; }
-  .fab-toolbar { right:8px; bottom:60px; padding:4px; }
+  .fab-toolbar { padding:4px; }
   .fab-btn { padding:8px 8px; min-width:44px; }
   .fab-label { display:none; }
 }

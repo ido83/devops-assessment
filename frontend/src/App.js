@@ -155,7 +155,7 @@ function App() {
       <header className="app-header">
         <div className="logo-area">
           <div className="logo-mark" style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}>SA</div>
-          <div className="logo-text"><h1 style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}>SecAssess</h1><span>{assessment.org_name||'New Assessment'} — {assessment.environment}</span></div>
+          <div className="logo-text"><h1 style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}>SecAssess</h1><span>{assessment.org_name||'New Assessment'} — {assessment.environment}</span><span className="logo-version">v{APP_VERSION} · {GIT_SHA}</span></div>
         </div>
         <div className="header-actions">
           {lastSaved && <span style={{fontSize:11,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace"}}>Saved {lastSaved.toLocaleTimeString()}</span>}
