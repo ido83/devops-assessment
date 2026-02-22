@@ -129,6 +129,14 @@ body::before {
   letter-spacing: 2px;
   text-transform: uppercase;
 }
+.logo-version {
+  display: block;
+  font-size: 10px !important;
+  letter-spacing: 0.5px !important;
+  text-transform: none !important;
+  color: var(--text-disabled, rgba(255,255,255,0.25)) !important;
+  margin-top: 2px;
+}
 
 .header-actions {
   display: flex;

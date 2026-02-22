@@ -80,12 +80,19 @@ cp secrets/db_pass.txt.example secrets/db_pass.txt
 # Edit secrets/db_pass.txt — replace placeholder with a strong password
 # Tip: openssl rand -base64 24
 
-# 4. Start all services
-docker compose up -d
+# 4. Start all services — pass current git SHA so it appears in the UI header
+GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
 
 # 5. Open browser
 open http://localhost:3000
 ```
+
+> **Why `GIT_SHA`?**
+> The UI header displays `v<version> · <sha>` (e.g. `v2.1.0 · 3cc00e3`) directly under the app subtitle.
+> This is baked into the React bundle at build time — not read at runtime — so the container must be
+> rebuilt with `--build` whenever the SHA should update.
+> The version is read automatically from `frontend/package.json`.
+> Without `GIT_SHA`, the SHA shows as `dev`.
 
 ### Local Development (without Docker)
 

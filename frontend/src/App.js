@@ -1,5 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import './styles/App.css';
+
+const APP_VERSION = process.env.REACT_APP_VERSION || '?';
+const GIT_SHA = process.env.REACT_APP_GIT_SHA || 'dev';
 import Dashboard from './components/Dashboard';
 import ConfigStep from './components/ConfigStep';
 import AssessmentStep from './components/AssessmentStep';
@@ -136,7 +139,7 @@ function App() {
       <div className="app-container">
         <Toast toasts={toasts} removeToast={removeToast} />
         <header className="app-header">
-          <div className="logo-area"><div className="logo-mark">SA</div><div className="logo-text"><h1>SecAssess</h1><span>DevOps & DevSecOps Platform</span></div></div>
+          <div className="logo-area"><div className="logo-mark">SA</div><div className="logo-text"><h1>SecAssess</h1><span>DevOps & DevSecOps Platform</span><span className="logo-version">v{APP_VERSION} · {GIT_SHA}</span></div></div>
           <div className="header-actions">
             <button className="btn btn-ghost btn-xs" style={{color:'var(--severity-critical)'}} onClick={truncateDB} title="Delete all assessments from database">🗑️ Truncate DB</button>
           </div>
