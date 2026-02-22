@@ -1,4 +1,4 @@
-# 🛡️ SecAssess v15
+# SecAssess - 2.1.0 - 1512b3b
 
 **Comprehensive DevOps & DevSecOps Platform Assessment Tool**
 
