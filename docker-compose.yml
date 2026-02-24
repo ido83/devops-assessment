@@ -1,16 +1,22 @@
+# SecAssess v15 — Docker Compose
+# DB password is loaded from ./secrets/db_pass.txt (gitignored).
+# Copy secrets/db_pass.txt.example → secrets/db_pass.txt and set a strong password.
+# DB_NAME and DB_USER must be set in .env (see .env.example).
 services:
   postgres:
     image: postgres:16-alpine
     container_name: secassess-db
     environment:
-      POSTGRES_DB: secassess
-      POSTGRES_USER: secassess
-      POSTGRES_PASSWORD: secassess
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_pass
+    secrets:
+      - db_pass
     volumes:
       - pg-data:/var/lib/postgresql/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U secassess -d secassess"]
+      test: [ "CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB" ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -22,27 +28,30 @@ services:
       dockerfile: Dockerfile
     container_name: secassess-api
     environment:
-      PORT: 4000
+      PORT: "4000"
       DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: secassess
-      DB_USER: secassess
-      DB_PASS: secassess
+      DB_PORT: "5432"
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+    secrets:
+      - db_pass
     depends_on:
       postgres:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>{if(!r.ok)throw 1;process.exit(0)}).catch(()=>process.exit(1))"]
+      test: [ "CMD", "node", "-e", "fetch('http://localhost:4000/health').then(r=>r.json()).then(d=>{if(!d.ok)throw 1;process.exit(0)}).catch(()=>process.exit(1))" ]
       interval: 10s
       timeout: 5s
       retries: 10
-      start_period: 10s
+      start_period: 30s
 
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      args:
+        REACT_APP_GIT_SHA: ${GIT_SHA:-dev}
     container_name: secassess-app
     ports:
       - "3000:8080"
@@ -50,6 +59,10 @@ services:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+secrets:
+  db_pass:
+    file: ./secrets/db_pass.txt
 
 volumes:
   pg-data:

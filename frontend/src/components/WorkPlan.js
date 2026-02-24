@@ -53,6 +53,10 @@ const WorkPlan = ({ workplan, setWorkplan }) => {
     setWorkplan({ ...wp, teamRoles: [...wp.teamRoles, { role: 'New Role', count: 1, responsibilities: '' }] });
   };
 
+  const removeRisk = (idx) => {
+    setWorkplan({ ...wp, riskItems: wp.riskItems.filter((_, i) => i !== idx) });
+  };
+
   const updRisk = (idx, field, value) => {
     const r = [...wp.riskItems];
     r[idx] = { ...r[idx], [field]: value };
@@ -140,19 +144,26 @@ const WorkPlan = ({ workplan, setWorkplan }) => {
         </div>
         <div className="assessment-table">
           <table>
-            <thead><tr><th>Risk</th><th style={{ width: 100 }}>Impact</th><th>Mitigation</th></tr></thead>
+            <thead><tr><th>Risk</th><th style={{ width: 110 }}>Impact</th><th>Mitigation</th><th style={{ width: 40 }}></th></tr></thead>
             <tbody>
               {wp.riskItems.map((r, i) => (
                 <tr key={i}>
-                  <td><input type="text" value={r.risk} onChange={e => updRisk(i, 'risk', e.target.value)} className="inline-input" /></td>
+                  <td><input type="text" value={r.risk} onChange={e => updRisk(i, 'risk', e.target.value)} className="inline-input" placeholder="Describe the risk..." /></td>
                   <td>
                     <select value={r.impact} onChange={e => updRisk(i, 'impact', e.target.value)} className={`status-select ${r.impact === 'high' ? 'fail' : r.impact === 'medium' ? 'partial' : ''}`}>
-                      <option value="low">Low</option><option value="medium">Medium</option><option value="high">High</option>
+                      <option value="low">🟢 Low</option><option value="medium">🟡 Medium</option><option value="high">🔴 High</option>
                     </select>
                   </td>
-                  <td><input type="text" value={r.mitigation} onChange={e => updRisk(i, 'mitigation', e.target.value)} className="inline-input" /></td>
+                  <td><input type="text" value={r.mitigation} onChange={e => updRisk(i, 'mitigation', e.target.value)} className="inline-input" placeholder="Mitigation strategy..." /></td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button className="btn-icon danger" style={{ width: 26, height: 26, fontSize: 12, border: 'none', background: 'transparent', cursor: 'pointer', color: 'var(--severity-critical)', borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      onClick={() => removeRisk(i)} title="Remove risk">✕</button>
+                  </td>
                 </tr>
               ))}
+              {wp.riskItems.length === 0 && (
+                <tr><td colSpan={4} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '20px', fontStyle: 'italic' }}>No risks added yet. Click "+ Add Risk" to add one.</td></tr>
+              )}
             </tbody>
           </table>
         </div>

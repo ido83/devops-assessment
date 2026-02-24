@@ -5,8 +5,10 @@ COPY package.json package-lock.json* ./
 RUN npm install --legacy-peer-deps
 COPY public/ ./public/
 COPY src/ ./src/
+ARG REACT_APP_GIT_SHA=dev
 ENV REACT_APP_API_URL=/api
-RUN npm run build
+ENV REACT_APP_GIT_SHA=$REACT_APP_GIT_SHA
+RUN REACT_APP_VERSION=$(node -e "process.stdout.write(require('./package.json').version)") npm run build
 
 # ── Stage 2: Serve with nginx ──
 FROM nginx:1.27-alpine

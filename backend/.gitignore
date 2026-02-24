@@ -1,7 +1,4 @@
 node_modules/
-data/
 .env
 .env.local
-*.log
-npm-debug.log*
-*.Identifier
+data/*.db

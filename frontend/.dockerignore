@@ -1,4 +1,10 @@
 node_modules
 build
 .git
+.gitignore
 .env
+.env.*
+*.md
+coverage
+.vscode
+.idea

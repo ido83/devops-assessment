@@ -12,13 +12,14 @@ const CURRENCIES = [
 ];
 
 const defaultPricing = {
-  engineers: 2,
-  duration: 6,
-  hourlyRate: 350,
+  engineers: 1,
+  duration: 1,
+  hourlyRate: 100,
   monthlyRate: 0,
   contingency: 15,
   totalCost: 0,
   currency: 'ILS',
+  estimationMode: 'price', // 'price', 'percentage', 'both'
   phases: [
     { name: 'Assessment & Planning', percentage: 15, months: 1 },
     { name: 'CI/CD & Pipeline Hardening', percentage: 20, months: 1.5 },
@@ -99,6 +100,15 @@ const PricingStep = ({ pricing, setPricing, toast }) => {
               <label>Contingency %</label>
               <input type="number" min="0" max="100" value={p.contingency} onChange={e => upd('contingency', Number(e.target.value))} />
             </div>
+            <div className="pricing-field">
+              <label>Estimation Display</label>
+              <select value={p.estimationMode || 'price'} onChange={e => upd('estimationMode', e.target.value)}
+                style={{width:'100%',padding:'10px 14px',background:'var(--bg-input)',border:'1px solid var(--border-subtle)',borderRadius:'var(--radius-sm)',color:'var(--text-primary)',fontFamily:"'JetBrains Mono',monospace",fontSize:14,outline:'none',cursor:'pointer'}}>
+                <option value="price">💰 Price Only</option>
+                <option value="percentage">📊 Job Percentage Only</option>
+                <option value="both">💰📊 Both</option>
+              </select>
+            </div>
           </div>
         </div>
 
@@ -122,7 +132,10 @@ const PricingStep = ({ pricing, setPricing, toast }) => {
       <div className="phases-table">
         <table>
           <thead>
-            <tr><th>Phase</th><th style={{ width: 100 }}>Allocation %</th><th style={{ width: 100 }}>Months</th><th style={{ width: 140 }}>Cost ({cur.symbol})</th><th style={{ width: 50 }}></th></tr>
+            <tr><th>Phase</th><th style={{ width: 100 }}>Allocation %</th><th style={{ width: 100 }}>Months</th>
+              {(p.estimationMode||'price') !== 'percentage' && <th style={{ width: 140 }}>Cost ({cur.symbol})</th>}
+              {(p.estimationMode||'price') !== 'price' && <th style={{ width: 100 }}>% of Job</th>}
+              <th style={{ width: 50 }}></th></tr>
           </thead>
           <tbody>
             {(p.phases || []).map((ph, idx) => {
@@ -142,8 +155,9 @@ const PricingStep = ({ pricing, setPricing, toast }) => {
                       style={{ width: 60, background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', borderRadius: 6, padding: '8px', color: 'var(--text-primary)', fontFamily: "'JetBrains Mono',monospace", fontSize: 13, textAlign: 'center' }} />
                   </td>
                   <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--accent-secondary)' }}>
-                    {fmt(phaseCost)}
+                    {(p.estimationMode||'price') !== 'percentage' && fmt(phaseCost)}
                   </td>
+                  {(p.estimationMode||'price') !== 'price' && <td style={{ fontFamily: "'JetBrains Mono',monospace", fontSize: 13, color: 'var(--text-primary)' }}>{ph.percentage}%</td>}
                   <td>
                     <button className="btn-icon danger" onClick={() => removePhase(idx)} title="Remove">✕</button>
                   </td>

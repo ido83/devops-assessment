@@ -1,38 +1,37 @@
 # Dependencies
 node_modules/
 
-# Build outputs
-build/
-dist/
-
-# Environment
+# Environment secrets — NEVER commit
 .env
+.env.example
 .env.local
 .env.*.local
 
-# IDE / Editor
-.idea/
-.vscode/
-*.swp
-*.swo
-*~
+# Docker secrets — NEVER commit actual secret files
+secrets/*.txt
+!secrets/*.txt.example
 
-# OS
+# Build output
+build/
+dist/
+
+# OS files
 .DS_Store
 Thumbs.db
 
-# Identifier files
-*.Identifier
-
-# Docker
-.docker/
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
 
 # Logs
 *.log
 npm-debug.log*
 
-# Database files (using PostgreSQL now)
+# Database files
 *.db
 *.sqlite
-*.sqlite3
-data/
+
+# Coverage
+coverage/
