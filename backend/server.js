@@ -33,7 +33,7 @@ const pool = new Pool({
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 20 * 1024 * 1024 } });
 function genId() { return crypto.randomUUID(); }
 
-const JSONB_FIELDS = ['responses','pricing','gantt','workplan','custom_templates','cicd_diagrams','gitflow_diagrams','artifact_repos','deployment_strategies','versioning_diagrams'];
+const JSONB_FIELDS = ['responses','pricing','gantt','workplan','custom_templates','cicd_diagrams','gitflow_diagrams','artifact_repos','deployment_strategies','versioning_diagrams','promotion_workflows'];
 const MAX_TEXT = 10000;
 function san(val, maxLen = MAX_TEXT) { if (val == null) return ''; return String(val).replace(/\0/g, '').trim().slice(0, maxLen); }
 function jsonSafe(val, fb = '{}') { if (!val) return fb; try { return JSON.stringify(val); } catch { return fb; } }
@@ -50,14 +50,14 @@ app.get('/api/assessments/:id', async (req, res) => {
 });
 app.post('/api/assessments', async (req, res) => {
   try { const id = genId(); const b = req.body;
-    await pool.query(`INSERT INTO assessments (id, org_name, assessor_name, assessment_date, environment, scope, template, responses, pricing, gantt, workplan, custom_templates, cicd_diagrams, gitflow_diagrams, artifact_repos, deployment_strategies, versioning_diagrams, score, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
-      [id, san(b.org_name,500), san(b.assessor_name,500), san(b.assessment_date,50), san(b.environment,100), san(b.scope), san(b.template,100), jsonSafe(b.responses), jsonSafe(b.pricing), jsonSafe(b.gantt), jsonSafe(b.workplan), jsonSafe(b.custom_templates,'[]'), jsonSafe(b.cicd_diagrams), jsonSafe(b.gitflow_diagrams), jsonSafe(b.artifact_repos), jsonSafe(b.deployment_strategies), jsonSafe(b.versioning_diagrams), parseInt(b.score)||0, san(b.status,50)||'draft']);
+    await pool.query(`INSERT INTO assessments (id, org_name, assessor_name, assessment_date, environment, scope, template, responses, pricing, gantt, workplan, custom_templates, cicd_diagrams, gitflow_diagrams, artifact_repos, deployment_strategies, versioning_diagrams, promotion_workflows, score, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+      [id, san(b.org_name,500), san(b.assessor_name,500), san(b.assessment_date,50), san(b.environment,100), san(b.scope), san(b.template,100), jsonSafe(b.responses), jsonSafe(b.pricing), jsonSafe(b.gantt), jsonSafe(b.workplan), jsonSafe(b.custom_templates,'[]'), jsonSafe(b.cicd_diagrams), jsonSafe(b.gitflow_diagrams), jsonSafe(b.artifact_repos), jsonSafe(b.deployment_strategies), jsonSafe(b.versioning_diagrams), jsonSafe(b.promotion_workflows), parseInt(b.score)||0, san(b.status,50)||'draft']);
     res.json({ id }); } catch (e) { res.status(500).json({ error: e.message }); }
 });
 app.put('/api/assessments/:id', async (req, res) => {
   try { const b = req.body;
-    const { rowCount } = await pool.query(`UPDATE assessments SET org_name=$1, assessor_name=$2, assessment_date=$3, environment=$4, scope=$5, template=$6, responses=$7, pricing=$8, gantt=$9, workplan=$10, custom_templates=$11, cicd_diagrams=$12, gitflow_diagrams=$13, artifact_repos=$14, deployment_strategies=$15, versioning_diagrams=$16, score=$17, status=$18, updated_at=NOW() WHERE id=$19`,
-      [san(b.org_name,500), san(b.assessor_name,500), san(b.assessment_date,50), san(b.environment,100), san(b.scope), san(b.template,100), jsonSafe(b.responses), jsonSafe(b.pricing), jsonSafe(b.gantt), jsonSafe(b.workplan), jsonSafe(b.custom_templates,'[]'), jsonSafe(b.cicd_diagrams), jsonSafe(b.gitflow_diagrams), jsonSafe(b.artifact_repos), jsonSafe(b.deployment_strategies), jsonSafe(b.versioning_diagrams), parseInt(b.score)||0, san(b.status,50)||'draft', san(req.params.id,100)]);
+    const { rowCount } = await pool.query(`UPDATE assessments SET org_name=$1, assessor_name=$2, assessment_date=$3, environment=$4, scope=$5, template=$6, responses=$7, pricing=$8, gantt=$9, workplan=$10, custom_templates=$11, cicd_diagrams=$12, gitflow_diagrams=$13, artifact_repos=$14, deployment_strategies=$15, versioning_diagrams=$16, promotion_workflows=$17, score=$18, status=$19, updated_at=NOW() WHERE id=$20`,
+      [san(b.org_name,500), san(b.assessor_name,500), san(b.assessment_date,50), san(b.environment,100), san(b.scope), san(b.template,100), jsonSafe(b.responses), jsonSafe(b.pricing), jsonSafe(b.gantt), jsonSafe(b.workplan), jsonSafe(b.custom_templates,'[]'), jsonSafe(b.cicd_diagrams), jsonSafe(b.gitflow_diagrams), jsonSafe(b.artifact_repos), jsonSafe(b.deployment_strategies), jsonSafe(b.versioning_diagrams), jsonSafe(b.promotion_workflows), parseInt(b.score)||0, san(b.status,50)||'draft', san(req.params.id,100)]);
     if (!rowCount) return res.status(404).json({ error: 'Not found' }); res.json({ ok: true }); }
   catch (e) { res.status(500).json({ error: e.message }); }
 });
@@ -69,8 +69,8 @@ app.post('/api/import/json', upload.single('file'), async (req, res) => {
   try { let data; if (req.file) data = JSON.parse(req.file.buffer.toString('utf8')); else if (req.body.data) data = typeof req.body.data === 'string' ? JSON.parse(req.body.data) : req.body.data; else return res.status(400).json({ error: 'No data' });
     const items = Array.isArray(data) ? data : [data]; const ids = [];
     for (const item of items) { const id = genId(); const m = item.metadata || item;
-      await pool.query(`INSERT INTO assessments (id, org_name, assessor_name, assessment_date, environment, scope, template, responses, pricing, gantt, workplan, custom_templates, cicd_diagrams, gitflow_diagrams, artifact_repos, deployment_strategies, versioning_diagrams, score, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)`,
-        [id, san(m.org_name||m.organization,500), san(m.assessor_name||m.assessor,500), san(m.assessment_date||m.date,50), san(m.environment,100), san(m.scope), san(m.template,100), jsonSafe(item.responses||m.responses), jsonSafe(item.pricing||m.pricing), jsonSafe(item.gantt||m.gantt), jsonSafe(item.workplan||m.workplan), jsonSafe(item.custom_templates||m.custom_templates,'[]'), jsonSafe(item.cicd_diagrams||m.cicd_diagrams), jsonSafe(item.gitflow_diagrams||m.gitflow_diagrams), jsonSafe(item.artifact_repos||m.artifact_repos), jsonSafe(item.deployment_strategies||m.deployment_strategies), jsonSafe(item.versioning_diagrams||m.versioning_diagrams), parseInt(item.score||m.score)||0, 'imported']);
+      await pool.query(`INSERT INTO assessments (id, org_name, assessor_name, assessment_date, environment, scope, template, responses, pricing, gantt, workplan, custom_templates, cicd_diagrams, gitflow_diagrams, artifact_repos, deployment_strategies, versioning_diagrams, promotion_workflows, score, status) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20)`,
+        [id, san(m.org_name||m.organization,500), san(m.assessor_name||m.assessor,500), san(m.assessment_date||m.date,50), san(m.environment,100), san(m.scope), san(m.template,100), jsonSafe(item.responses||m.responses), jsonSafe(item.pricing||m.pricing), jsonSafe(item.gantt||m.gantt), jsonSafe(item.workplan||m.workplan), jsonSafe(item.custom_templates||m.custom_templates,'[]'), jsonSafe(item.cicd_diagrams||m.cicd_diagrams), jsonSafe(item.gitflow_diagrams||m.gitflow_diagrams), jsonSafe(item.artifact_repos||m.artifact_repos), jsonSafe(item.deployment_strategies||m.deployment_strategies), jsonSafe(item.versioning_diagrams||m.versioning_diagrams), jsonSafe(item.promotion_workflows||m.promotion_workflows), parseInt(item.score||m.score)||0, 'imported']);
       ids.push(id); } res.json({ imported: ids.length, ids }); }
   catch (e) { res.status(400).json({ error: 'Invalid: ' + e.message }); }
 });
@@ -87,6 +87,7 @@ function buildReportData(row) {
     { title:'CI/CD Workflows', count: countFlows(row.cicd_diagrams,'workflows'), flows: (row.cicd_diagrams?.workflows||[]).flatMap(w=>(w.pipelines||[]).map(p=>({name:p.name,nodes:(p.nodes||[]).length,desc:p.description||''}))) },
     { title:'Git Flow', count: countFlows(row.gitflow_diagrams,'flows'), flows: (row.gitflow_diagrams?.flows||[]).map(f=>({name:f.name,nodes:(f.nodes||[]).length,desc:f.description||''})) },
     { title:'Deployment Strategies', count: countFlows(row.deployment_strategies,'strategies'), flows: (row.deployment_strategies?.strategies||[]).map(s=>({name:s.name,cat:s.cat||'',nodes:(s.nodes||[]).length,desc:s.description||''})) },
+    { title:'Promotion Workflows', count: countFlows(row.promotion_workflows,'workflows'), flows: (row.promotion_workflows?.workflows||[]).map(w=>({name:w.name,cat:w.cat||'',nodes:(w.nodes||[]).length,desc:w.description||''})) },
     { title:'Versioning', count: countFlows(row.versioning_diagrams,'flows'), flows: (row.versioning_diagrams?.flows||[]).map(f=>({name:f.name,nodes:(f.nodes||[]).length,desc:f.description||''})) },
     { title:'Artifact Registries', count: countFlows(row.artifact_repos,'registries'), flows: (row.artifact_repos?.registries||[]).map(r=>({name:r.name,type:r.registryType,repos:(r.repos||[]).length})) },
   ];
@@ -185,8 +186,8 @@ function generatePdfBuffer(row, images, exportSections) {
     doc.rect(MARGIN,MARGIN,6,36).fill(C.accent);
     doc.fontSize(F.heading).fillColor(C.accent).text('Contents', MARGIN+16, MARGIN+8, { width:PW-16 });
     doc.y = MARGIN+56;
-    const secIdMap = { 'Configuration':'config','Assessment Responses':'assessment','CI/CD Workflows':'cicd','Git Flow':'gitflow','Deployment Strategies':'deploy','Versioning':'versioning','Artifact Registries':'artifacts','Pricing':'pricing','Gantt Chart':'gantt','Work Plan':'workplan' };
-    const diagramSectionKey = { 'CI/CD Workflows':'cicd','Git Flow':'gitflow','Deployment Strategies':'deploy','Versioning':'versioning' };
+    const secIdMap = { 'Configuration':'config','Assessment Responses':'assessment','CI/CD Workflows':'cicd','Git Flow':'gitflow','Deployment Strategies':'deploy','Promotion Workflows':'promotion','Versioning':'versioning','Artifact Registries':'artifacts','Pricing':'pricing','Gantt Chart':'gantt','Work Plan':'workplan' };
+    const diagramSectionKey = { 'CI/CD Workflows':'cicd','Git Flow':'gitflow','Deployment Strategies':'deploy','Promotion Workflows':'promotion','Versioning':'versioning' };
     let tocIndex = 1;
     for (const sec of rpt.sections) {
       const secId = secIdMap[sec.title];
@@ -542,7 +543,18 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     if (depImgs.length) { let cur=ds.strategies.length+3; cur=addSectionBanner(dss,'Deployment Strategy Diagrams',cur)+1; embedImages(dss,depImgs,cur); }
   }
 
-  /* SHEET 7: Versioning */
+  /* SHEET 7: Promotion */
+  const pw_data=dbRow.promotion_workflows||{};
+  if (pw_data.workflows?.length && secIncludes('promotion')) {
+    const pws=wb.addWorksheet('Promotion'); setImageColWidths(pws);
+    pws.columns=[{header:'Workflow',key:'n',width:COL_W_UNITS*3},{header:'Category',key:'c',width:COL_W_UNITS*1.5},{header:'Stages',key:'s',width:COL_W_UNITS},{header:'Desc',key:'d',width:COL_W_UNITS*4}];
+    styleHeaderRow(pws,4);
+    pw_data.workflows.forEach(w=>pws.addRow({n:w.name,c:w.cat||'',s:(w.nodes||[]).length,d:w.description||''}));
+    const promoImgs=images.filter(img=>img.section==='promotion');
+    if (promoImgs.length) { let cur=pw_data.workflows.length+3; cur=addSectionBanner(pws,'Promotion Workflow Diagrams',cur)+1; embedImages(pws,promoImgs,cur); }
+  }
+
+  /* SHEET 8: Versioning */
   const vd=dbRow.versioning_diagrams||{};
   if (vd.flows?.length && secIncludes('versioning')) {
     const vs=wb.addWorksheet('Versioning'); setImageColWidths(vs);
@@ -737,8 +749,8 @@ app.post('/api/export/zip/:id', async (req, res) => {
 /* ── Init DB ── */
 async function initDB() {
   for (let i=1;i<=15;i++){try{console.log(`DB connect (${i}/15)...`);await pool.query('SELECT 1');console.log('Connected');break;}catch(e){if(i===15)throw e;console.log('Waiting...');await new Promise(r=>setTimeout(r,2000));}}
-  await pool.query(`CREATE TABLE IF NOT EXISTS assessments (id TEXT PRIMARY KEY, org_name TEXT NOT NULL DEFAULT '', assessor_name TEXT DEFAULT '', assessment_date TEXT DEFAULT '', environment TEXT DEFAULT 'production', scope TEXT DEFAULT '', template TEXT DEFAULT 'full', responses JSONB DEFAULT '{}', pricing JSONB DEFAULT '{}', gantt JSONB DEFAULT '{}', workplan JSONB DEFAULT '{}', custom_templates JSONB DEFAULT '[]', cicd_diagrams JSONB DEFAULT '{}', gitflow_diagrams JSONB DEFAULT '{}', artifact_repos JSONB DEFAULT '{}', deployment_strategies JSONB DEFAULT '{}', versioning_diagrams JSONB DEFAULT '{}', score INTEGER DEFAULT 0, status TEXT DEFAULT 'draft', created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
-  for (const m of ["ALTER TABLE assessments ADD COLUMN IF NOT EXISTS cicd_diagrams JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS gitflow_diagrams JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS artifact_repos JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS deployment_strategies JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS versioning_diagrams JSONB DEFAULT '{}'"]) { try{await pool.query(m);}catch{} }
+  await pool.query(`CREATE TABLE IF NOT EXISTS assessments (id TEXT PRIMARY KEY, org_name TEXT NOT NULL DEFAULT '', assessor_name TEXT DEFAULT '', assessment_date TEXT DEFAULT '', environment TEXT DEFAULT 'production', scope TEXT DEFAULT '', template TEXT DEFAULT 'full', responses JSONB DEFAULT '{}', pricing JSONB DEFAULT '{}', gantt JSONB DEFAULT '{}', workplan JSONB DEFAULT '{}', custom_templates JSONB DEFAULT '[]', cicd_diagrams JSONB DEFAULT '{}', gitflow_diagrams JSONB DEFAULT '{}', artifact_repos JSONB DEFAULT '{}', deployment_strategies JSONB DEFAULT '{}', versioning_diagrams JSONB DEFAULT '{}', promotion_workflows JSONB DEFAULT '{}', score INTEGER DEFAULT 0, status TEXT DEFAULT 'draft', created_at TIMESTAMPTZ DEFAULT NOW(), updated_at TIMESTAMPTZ DEFAULT NOW())`);
+  for (const m of ["ALTER TABLE assessments ADD COLUMN IF NOT EXISTS cicd_diagrams JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS gitflow_diagrams JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS artifact_repos JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS deployment_strategies JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS versioning_diagrams JSONB DEFAULT '{}'","ALTER TABLE assessments ADD COLUMN IF NOT EXISTS promotion_workflows JSONB DEFAULT '{}'"]) { try{await pool.query(m);}catch{} }
   console.log('DB ready'); dbReady = true;
 }
 async function start(){await initDB();app.listen(PORT,'0.0.0.0',()=>console.log(`SecAssess v21 API on port ${PORT}`));}

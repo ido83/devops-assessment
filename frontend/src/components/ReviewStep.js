@@ -14,6 +14,7 @@ const EXPORT_SECTIONS = [
   { id:'cicd', label:'CI/CD Diagrams', icon:'🔄' },
   { id:'gitflow', label:'Git Flow', icon:'🌿' },
   { id:'deploy', label:'Deployment Strategies', icon:'🚀' },
+  { id:'promotion', label:'Promotion Workflows', icon:'🎯' },
   { id:'artifacts', label:'Artifact Registries', icon:'📦' },
   { id:'versioning', label:'Versioning', icon:'🏷️' },
   { id:'pricing', label:'Pricing', icon:'💰' },

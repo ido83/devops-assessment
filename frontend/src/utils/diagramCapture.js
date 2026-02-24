@@ -23,6 +23,7 @@ const SECTION_TAB = {
   cicd:       'CI-CD',
   gitflow:    'GitFlow',
   deploy:     'Deploy',
+  promotion:  'Promotion',
   versioning: 'Versioning',
 };
 
@@ -30,6 +31,7 @@ const SECTION_PREFIX = {
   cicd:       'CI/CD:',
   gitflow:    'Git Flow:',
   deploy:     'Deploy:',
+  promotion:  'Promo:',
   versioning: 'Version:',
 };
 

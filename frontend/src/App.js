@@ -3,6 +3,7 @@ import './styles/App.css';
 
 const APP_VERSION = process.env.REACT_APP_VERSION || '?';
 const GIT_SHA = process.env.REACT_APP_GIT_SHA || 'dev';
+const GIT_BRANCH = process.env.REACT_APP_GIT_BRANCH || 'main';
 import Dashboard from './components/Dashboard';
 import ConfigStep from './components/ConfigStep';
 import AssessmentStep from './components/AssessmentStep';
@@ -15,6 +16,7 @@ import GitFlowDiagram from './components/GitFlowDiagram';
 import ArtifactRegistry from './components/ArtifactRegistry';
 import DeploymentStrategies from './components/DeploymentStrategies';
 import VersioningDiagram from './components/VersioningDiagram';
+import PromotionDiagram from './components/PromotionDiagram';
 import { api } from './utils/api';
 import { computeStats, getFilteredCategories } from './utils/exporters';
 
@@ -24,6 +26,7 @@ const TABS = [
   { id:'cicd', label:'CI/CD', icon:'🔄' },
   { id:'gitflow', label:'Git Flow', icon:'🌿' },
   { id:'deploy', label:'Deploy Strategy', icon:'🚀' },
+  { id:'promotion', label:'Promotion', icon:'🎯' },
   { id:'versioning', label:'Versioning', icon:'🏷️' },
   { id:'artifacts', label:'Artifacts', icon:'📦' },
   { id:'pricing', label:'Pricing', icon:'💰' },
@@ -32,7 +35,7 @@ const TABS = [
   { id:'review', label:'Review & Export', icon:'📊' },
 ];
 
-const DATA_FIELDS = ['responses','pricing','gantt','workplan','cicd_diagrams','gitflow_diagrams','artifact_repos','deployment_strategies','versioning_diagrams','custom_templates'];
+const DATA_FIELDS = ['responses','pricing','gantt','workplan','cicd_diagrams','gitflow_diagrams','artifact_repos','deployment_strategies','versioning_diagrams','promotion_workflows','custom_templates'];
 
 const emptyAssessment = () => ({
   id: null,
@@ -40,7 +43,7 @@ const emptyAssessment = () => ({
   environment: 'production', scope: '', template: 'full',
   responses: {}, pricing: {}, gantt: {}, workplan: {}, cicd_diagrams: {},
   gitflow_diagrams: {}, artifact_repos: {}, deployment_strategies: {}, versioning_diagrams: {},
-  custom_templates: [], score: 0, status: 'draft',
+  promotion_workflows: {}, custom_templates: [], score: 0, status: 'draft',
 });
 
 function Toast({ toasts, removeToast }) {
@@ -102,7 +105,7 @@ function App() {
 
   const truncateCurrentTab = () => {
     const tabId = TABS[tab]?.id;
-    const fieldMap = { assess:'responses', pricing:'pricing', gantt:'gantt', workplan:'workplan', cicd:'cicd_diagrams', gitflow:'gitflow_diagrams', deploy:'deployment_strategies', versioning:'versioning_diagrams', artifacts:'artifact_repos', config:null, review:null };
+    const fieldMap = { assess:'responses', pricing:'pricing', gantt:'gantt', workplan:'workplan', cicd:'cicd_diagrams', gitflow:'gitflow_diagrams', deploy:'deployment_strategies', promotion:'promotion_workflows', versioning:'versioning_diagrams', artifacts:'artifact_repos', config:null, review:null };
     const field = fieldMap[tabId];
     if (!field) { toast('Nothing to clear on this tab', 'info'); return; }
     if (!window.confirm(`Clear all data on "${TABS[tab].label}" tab?`)) return;
@@ -139,7 +142,7 @@ function App() {
       <div className="app-container">
         <Toast toasts={toasts} removeToast={removeToast} />
         <header className="app-header">
-          <div className="logo-area"><div className="logo-mark">SA</div><div className="logo-text"><h1>SecAssess</h1><span>DevOps & DevSecOps Platform</span><span className="logo-version">v{APP_VERSION} · {GIT_SHA}</span></div></div>
+          <div className="logo-area"><div className="logo-mark"><svg viewBox="0 0 62 48" width="98" height="76" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="62" height="48" rx="5" fill="rgb(12,12,19)"/><path d="M31,22 C31,13 22,8 14,8 C6,8 3,14 3,22 C3,30 6,36 14,36 C22,36 31,30 31,22 C31,13 40,8 48,8 C56,8 59,14 59,22 C59,30 56,36 48,36 C40,36 31,30 31,22" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="white" fillOpacity="0.05"/><polygon points="19,8 24,5.5 24,10.5" fill="white" opacity="0.75"/><polygon points="43,8 38,5.5 38,10.5" fill="white" opacity="0.75"/><text x="14" y="25" textAnchor="middle" fontSize="7" fill="white" fontFamily="'JetBrains Mono',monospace" opacity="0.9">Dev</text><text x="48" y="25" textAnchor="middle" fontSize="7" fill="white" fontFamily="'JetBrains Mono',monospace" opacity="0.9">Ops</text><text x="31" y="46" textAnchor="middle" fontSize="5.5" fill="white" fontFamily="'JetBrains Mono',monospace" letterSpacing="2.5" opacity="0.7">DevOps</text></svg></div><div className="logo-text"><h1>SecAssess</h1><span>DevOps & DevSec_Ops Platform</span><span className="logo-version">v{APP_VERSION} · {GIT_BRANCH} · {GIT_SHA}</span></div></div>
           <div className="header-actions">
             <button className="btn btn-ghost btn-xs" style={{color:'var(--severity-critical)'}} onClick={truncateDB} title="Delete all assessments from database">🗑️ Truncate DB</button>
           </div>
@@ -154,8 +157,8 @@ function App() {
       <Toast toasts={toasts} removeToast={removeToast} />
       <header className="app-header">
         <div className="logo-area">
-          <div className="logo-mark" style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}>SA</div>
-          <div className="logo-text"><h1 style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}>SecAssess</h1><span>{assessment.org_name||'New Assessment'} — {assessment.environment}</span><span className="logo-version">v{APP_VERSION} · {GIT_SHA}</span></div>
+          <div className="logo-mark" style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}><svg viewBox="0 0 62 48" width="98" height="76" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="62" height="48" rx="5" fill="rgb(12,12,19)"/><path d="M31,22 C31,13 22,8 14,8 C6,8 3,14 3,22 C3,30 6,36 14,36 C22,36 31,30 31,22 C31,13 40,8 48,8 C56,8 59,14 59,22 C59,30 56,36 48,36 C40,36 31,30 31,22" stroke="white" strokeWidth="1.5" strokeLinecap="round" fill="white" fillOpacity="0.05"/><polygon points="19,8 24,5.5 24,10.5" fill="white" opacity="0.75"/><polygon points="43,8 38,5.5 38,10.5" fill="white" opacity="0.75"/><text x="14" y="25" textAnchor="middle" fontSize="7" fill="white" fontFamily="'JetBrains Mono',monospace" opacity="0.9">Dev</text><text x="48" y="25" textAnchor="middle" fontSize="7" fill="white" fontFamily="'JetBrains Mono',monospace" opacity="0.9">Ops</text><text x="31" y="46" textAnchor="middle" fontSize="5.5" fill="white" fontFamily="'JetBrains Mono',monospace" letterSpacing="2.5" opacity="0.7">DevOps</text></svg></div>
+          <div className="logo-text"><h1 style={{cursor:'pointer'}} onClick={()=>setView('dashboard')}>SecAssess</h1><span>{assessment.org_name||'New Assessment'} — {assessment.environment}</span><span className="logo-version">v{APP_VERSION} · {GIT_BRANCH} · {GIT_SHA}</span></div>
         </div>
         <div className="header-actions">
           {lastSaved && <span style={{fontSize:11,color:'var(--text-muted)',fontFamily:"'JetBrains Mono',monospace"}}>Saved {lastSaved.toLocaleTimeString()}</span>}
@@ -181,12 +184,13 @@ function App() {
         {tab===2 && <CiCdDiagram diagrams={assessment.cicd_diagrams} setDiagrams={v=>setField('cicd_diagrams',v)} toast={toast} />}
         {tab===3 && <GitFlowDiagram data={assessment.gitflow_diagrams} setData={v=>setField('gitflow_diagrams',v)} toast={toast} />}
         {tab===4 && <DeploymentStrategies data={assessment.deployment_strategies} setData={v=>setField('deployment_strategies',v)} toast={toast} />}
-        {tab===5 && <VersioningDiagram data={assessment.versioning_diagrams} setData={v=>setField('versioning_diagrams',v)} toast={toast} />}
-        {tab===6 && <ArtifactRegistry data={assessment.artifact_repos} setData={v=>setField('artifact_repos',v)} toast={toast} />}
-        {tab===7 && <PricingStep pricing={assessment.pricing} setPricing={v=>setField('pricing',v)} toast={toast} />}
-        {tab===8 && <GanttChart gantt={assessment.gantt} setGantt={v=>setField('gantt',v)} toast={toast} />}
-        {tab===9 && <WorkPlan workplan={assessment.workplan} setWorkplan={v=>setField('workplan',v)} toast={toast} />}
-        {tab===10 && <ReviewStep assessment={assessment} toast={toast} />}
+        {tab===5 && <PromotionDiagram data={assessment.promotion_workflows} setData={v=>setField('promotion_workflows',v)} toast={toast} />}
+        {tab===6 && <VersioningDiagram data={assessment.versioning_diagrams} setData={v=>setField('versioning_diagrams',v)} toast={toast} />}
+        {tab===7 && <ArtifactRegistry data={assessment.artifact_repos} setData={v=>setField('artifact_repos',v)} toast={toast} />}
+        {tab===8 && <PricingStep pricing={assessment.pricing} setPricing={v=>setField('pricing',v)} toast={toast} />}
+        {tab===9 && <GanttChart gantt={assessment.gantt} setGantt={v=>setField('gantt',v)} toast={toast} />}
+        {tab===10 && <WorkPlan workplan={assessment.workplan} setWorkplan={v=>setField('workplan',v)} toast={toast} />}
+        {tab===11 && <ReviewStep assessment={assessment} toast={toast} />}
         <div className="btn-group">
           {tab>0&&<button className="btn btn-secondary" onClick={()=>setTab(t=>t-1)}>← Back</button>}
           {tab<TABS.length-1&&<button className="btn btn-primary" onClick={()=>{

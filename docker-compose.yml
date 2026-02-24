@@ -52,6 +52,7 @@ services:
       dockerfile: Dockerfile
       args:
         REACT_APP_GIT_SHA: ${GIT_SHA:-dev}
+        REACT_APP_GIT_BRANCH: ${GIT_BRANCH:-main}
     container_name: secassess-app
     ports:
       - "3000:8080"
