@@ -43,6 +43,7 @@ secassess/
 │   │   │   └── versioningTemplates.js # 6 versioning scheme templates
 │   │   ├── utils/
 │   │   │   ├── api.js               # REST client with all endpoints
+│   │   │   ├── diagramCapture.js    # SVG→PNG capture (3× scale, rounded corners)
 │   │   │   ├── exporters.js         # Client-side HTML/Markdown/JSON export
 │   │   │   └── graphEngine.js       # Shared: layout, export SVG/PNG, import
 │   │   └── styles/
@@ -50,8 +51,12 @@ secassess/
 │   └── public/
 │       └── index.html
 ├── docker-compose.yml          # 3-service stack (postgres, backend, frontend)
+├── Makefile                    # make up / down / build / logs — injects git branch+SHA automatically
 ├── secrets/
 │   └── db_pass.txt.example     # Copy to db_pass.txt — set a strong password (gitignored)
+├── images/
+│   ├── devops-2.svg            # DevOps circular-arrows logo source (inline in header)
+│   └── SecAssess_logo.png      # Reference logo asset
 ├── .gitignore                  # Excludes .env, secrets/*.txt, node_modules, build
 └── README.md                   # This file
 ```
@@ -82,19 +87,28 @@ cp secrets/db_pass.txt.example secrets/db_pass.txt
 # Edit secrets/db_pass.txt — replace placeholder with a strong password
 # Tip: openssl rand -base64 24
 
-# 4. Start all services — pass branch + SHA so they appear in the UI header
-GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD) GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
+# 4. Build and start — the Makefile injects the current git branch + SHA automatically
+make up
 
 # 5. Open browser
 open http://localhost:3000
 ```
 
-> **Why `GIT_BRANCH` and `GIT_SHA`?**
-> The UI header displays `v<version> · <branch> · <sha>` (e.g. `v2.1.0 · main · 3cc00e3`).
-> These are baked into the React bundle at build time — not read at runtime — so the container must be
-> rebuilt with `--build` whenever the values should update.
+### Makefile targets
+
+| Command | Description |
+|---------|-------------|
+| `make up` | Build images and start all services (injects current `GIT_BRANCH` + `GIT_SHA`) |
+| `make build` | Build images without starting containers |
+| `make down` | Stop and remove all containers |
+| `make logs` | Follow logs for all services |
+
+> **Why inject `GIT_BRANCH` and `GIT_SHA`?**
+> The UI header displays `v<version> · <branch> · <sha>` (e.g. `v2.1.0 · v21 · 3cc00e3`).
+> These are baked into the React bundle at build time — not read at runtime — so the container
+> must be rebuilt with `--build` whenever the values should update.
 > The version is read automatically from `frontend/package.json`.
-> Without these env vars, they default to `main` and `dev` respectively.
+> `make up` handles all of this; without it they default to `main` / `dev`.
 
 ### Local Development (without Docker)
 
@@ -149,7 +163,7 @@ REACT_APP_API_URL=http://localhost:4000/api npm start
 | HTML | Client-side | Styled dark-theme report |
 | Markdown | Client-side | For wikis, Git, documentation |
 | JSON | Client-side | Full structured data with all tabs |
-| Excel | Server-side | Multi-sheet workbook (one sheet per tab + All_Diagrams) with embedded diagram images |
+| Excel | Server-side | Multi-sheet workbook (one sheet per tab + All_Diagrams); each workflow row has its diagram image embedded inline, rounded corners, correct aspect ratio |
 | PDF | Server-side | Full report with all sections + embedded diagram images |
 | XML | Server-side | Structured XML with CDATA sections |
 | SQL | Server-side | INSERT statement for PostgreSQL |
@@ -230,7 +244,8 @@ CREATE TABLE assessments (
 
 ## 📝 Version History
 
-- **v21** — Promotion Workflows tab (8 templates, 10 node types), ZIP includes PDF+XLSX+images/, Excel All_Diagrams sheet + Gantt/WorkPlan sheets, PDF Gantt/WorkPlan sections, DevOps infinity logo, header redesign, branch+SHA in version line
+- **v22** — DevOps circular-arrows logo (devops-2.svg inline, 8-stage multi-color: violet→indigo→lavender→sky-blue→cyan→mint→green→teal), logo scaled to 104×55 px, Dashboard auto-refresh after Truncate DB, logo proportions and spacing fix
+- **v21** — Promotion Workflows tab (8 templates, 10 node types), Excel inline diagram images per workflow row (rounded corners, correct aspect ratio), All_Diagrams sheet includes all 5 diagram sections, Makefile (`make up/down/build/logs`), always-mounted diagram tabs for reliable image capture, DevOps infinity logo, transparent header, branch+SHA in version line, ZIP includes PDF+XLSX+images/
 - **v15** — Versioning tab, server-side PDF/SQL/XML/ZIP exports, GitHub Actions CI/CD, SBOM, SemVer, enhanced Excel export, input validation, secrets management
 - **v14** — Deployment Strategies (18 templates), hybrid cloud CI/CD, truncate, export section selection
 - **v13** — CI/CD expansion (11 templates), Git Flow (6 templates), Artifact Registry, shared graph engine

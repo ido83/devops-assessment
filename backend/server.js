@@ -422,7 +422,7 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
   wb.creator = 'SecAssess v21'; wb.created = new Date(); wb.modified = new Date();
   const secIncludes = (sec) => !exportSections || exportSections.includes(sec);
 
-  const COL_W_UNITS=12, COL_PX=90, ROW_PT=15, ROW_PX=ROW_PT*(4/3);
+  const COL_W_UNITS=12, COL_PX=84, ROW_PT=15, ROW_PX=ROW_PT*(4/3); // COL_PX: floor(((256×12+18)/256)×7)=84 per OOXML spec
   const IMG_COLS=10, MAX_IMG_W=IMG_COLS*COL_PX, MAX_IMG_H=360, SHEET_W_PX=IMG_COLS*COL_PX;
   const PURPLE={argb:'FF4A3FBF'};
   const headerFill={type:'pattern',pattern:'solid',fgColor:{argb:'FFECE9FF'}};
@@ -475,6 +475,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
   }
 
   function setImageColWidths(ws) { for (let c=1;c<=IMG_COLS;c++) ws.getColumn(c).width=COL_W_UNITS; }
+  /* Match a captured image to its workflow row by section + raw name */
+  function findImg(imgs,section,rawName){const pfx={cicd:'CI/CD:',gitflow:'Git Flow:',deploy:'Deploy:',promotion:'Promo:',versioning:'Version:'}[section]||'';const t=pfx?`${pfx} ${rawName}`:rawName;return imgs.find(i=>i.section===section&&i.name===t)||imgs.find(i=>i.section===section&&i.name.toLowerCase().includes(rawName.toLowerCase()));}
 
   /* SHEET 1: Summary */
   const ss = wb.addWorksheet('Summary');
@@ -513,12 +515,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     const ws=wb.addWorksheet('CI-CD'); setImageColWidths(ws);
     ws.columns=[{header:'Workflow',key:'wf',width:COL_W_UNITS*2},{header:'Pipeline',key:'pl',width:COL_W_UNITS*2.5},{header:'Stages',key:'s',width:COL_W_UNITS},{header:'Desc',key:'d',width:COL_W_UNITS*4}];
     styleHeaderRow(ws,4);
-    cicd.workflows.forEach(wf=>(wf.pipelines||[]).forEach(p=>ws.addRow({wf:wf.name,pl:p.name,s:(p.nodes||[]).length,d:p.description||''})));
-    const cicdImgs=images.filter(img=>img.section==='cicd');
-    if (cicdImgs.length) {
-      const dataRows=cicd.workflows.reduce((t,wf)=>t+(wf.pipelines||[]).length,0);
-      let cur=dataRows+3; cur=addSectionBanner(ws,'CI/CD Workflow Diagrams',cur)+1; embedImages(ws,cicdImgs,cur);
-    }
+    let cur=2;
+    for(const wf of cicd.workflows){for(const p of(wf.pipelines||[])){const r=ws.getRow(cur);r.getCell(1).value=wf.name;r.getCell(2).value=p.name;r.getCell(3).value=(p.nodes||[]).length;r.getCell(4).value=p.description||'';cur++;const img=findImg(images,'cicd',p.name);if(img){try{cur=anchorImage(ws,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}}
   }
 
   /* SHEET 5: GitFlow */
@@ -527,9 +525,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     const gs=wb.addWorksheet('GitFlow'); setImageColWidths(gs);
     gs.columns=[{header:'Flow',key:'n',width:COL_W_UNITS*3},{header:'Nodes',key:'c',width:COL_W_UNITS},{header:'Desc',key:'d',width:COL_W_UNITS*6}];
     styleHeaderRow(gs,3);
-    gf.flows.forEach(f=>gs.addRow({n:f.name,c:(f.nodes||[]).length,d:f.description||''}));
-    const gitImgs=images.filter(img=>img.section==='gitflow');
-    if (gitImgs.length) { let cur=gf.flows.length+3; cur=addSectionBanner(gs,'Git Flow Diagrams',cur)+1; embedImages(gs,gitImgs,cur); }
+    let cur=2;
+    for(const f of gf.flows){const r=gs.getRow(cur);r.getCell(1).value=f.name;r.getCell(2).value=(f.nodes||[]).length;r.getCell(3).value=f.description||'';cur++;const img=findImg(images,'gitflow',f.name);if(img){try{cur=anchorImage(gs,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
   /* SHEET 6: Deploy */
@@ -538,9 +535,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     const dss=wb.addWorksheet('Deploy'); setImageColWidths(dss);
     dss.columns=[{header:'Strategy',key:'n',width:COL_W_UNITS*3},{header:'Category',key:'c',width:COL_W_UNITS*1.5},{header:'Stages',key:'s',width:COL_W_UNITS},{header:'Desc',key:'d',width:COL_W_UNITS*4}];
     styleHeaderRow(dss,4);
-    ds.strategies.forEach(s=>dss.addRow({n:s.name,c:s.cat||'',s:(s.nodes||[]).length,d:s.description||''}));
-    const depImgs=images.filter(img=>img.section==='deploy');
-    if (depImgs.length) { let cur=ds.strategies.length+3; cur=addSectionBanner(dss,'Deployment Strategy Diagrams',cur)+1; embedImages(dss,depImgs,cur); }
+    let cur=2;
+    for(const s of ds.strategies){const r=dss.getRow(cur);r.getCell(1).value=s.name;r.getCell(2).value=s.cat||'';r.getCell(3).value=(s.nodes||[]).length;r.getCell(4).value=s.description||'';cur++;const img=findImg(images,'deploy',s.name);if(img){try{cur=anchorImage(dss,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
   /* SHEET 7: Promotion */
@@ -549,9 +545,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     const pws=wb.addWorksheet('Promotion'); setImageColWidths(pws);
     pws.columns=[{header:'Workflow',key:'n',width:COL_W_UNITS*3},{header:'Category',key:'c',width:COL_W_UNITS*1.5},{header:'Stages',key:'s',width:COL_W_UNITS},{header:'Desc',key:'d',width:COL_W_UNITS*4}];
     styleHeaderRow(pws,4);
-    pw_data.workflows.forEach(w=>pws.addRow({n:w.name,c:w.cat||'',s:(w.nodes||[]).length,d:w.description||''}));
-    const promoImgs=images.filter(img=>img.section==='promotion');
-    if (promoImgs.length) { let cur=pw_data.workflows.length+3; cur=addSectionBanner(pws,'Promotion Workflow Diagrams',cur)+1; embedImages(pws,promoImgs,cur); }
+    let cur=2;
+    for(const w of pw_data.workflows){const r=pws.getRow(cur);r.getCell(1).value=w.name;r.getCell(2).value=w.cat||'';r.getCell(3).value=(w.nodes||[]).length;r.getCell(4).value=w.description||'';cur++;const img=findImg(images,'promotion',w.name);if(img){try{cur=anchorImage(pws,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
   /* SHEET 8: Versioning */
@@ -560,9 +555,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     const vs=wb.addWorksheet('Versioning'); setImageColWidths(vs);
     vs.columns=[{header:'Scheme',key:'n',width:COL_W_UNITS*3},{header:'Nodes',key:'c',width:COL_W_UNITS},{header:'Desc',key:'d',width:COL_W_UNITS*6}];
     styleHeaderRow(vs,3);
-    vd.flows.forEach(f=>vs.addRow({n:f.name,c:(f.nodes||[]).length,d:f.description||''}));
-    const verImgs=images.filter(img=>img.section==='versioning');
-    if (verImgs.length) { let cur=vd.flows.length+3; cur=addSectionBanner(vs,'Versioning Diagrams',cur)+1; embedImages(vs,verImgs,cur); }
+    let cur=2;
+    for(const f of vd.flows){const r=vs.getRow(cur);r.getCell(1).value=f.name;r.getCell(2).value=(f.nodes||[]).length;r.getCell(3).value=f.description||'';cur++;const img=findImg(images,'versioning',f.name);if(img){try{cur=anchorImage(vs,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
   /* SHEET 8: Artifacts */
@@ -641,8 +635,8 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     const tCell=imgSheet.getRow(1).getCell(1);
     tCell.value='All Workflow Diagrams'; tCell.font={bold:true,size:16,color:PURPLE}; tCell.fill=titleFill; tCell.alignment={vertical:'middle'};
     imgSheet.getRow(1).height=28; imgSheet.mergeCells(1,1,1,IMG_COLS);
-    const diagSecs=['cicd','gitflow','deploy','versioning'];
-    const secLabels={cicd:'CI/CD Workflows',gitflow:'Git Flow',deploy:'Deployment Strategies',versioning:'Versioning'};
+    const diagSecs=['cicd','gitflow','deploy','promotion','versioning'];
+    const secLabels={cicd:'CI/CD Workflows',gitflow:'Git Flow',deploy:'Deployment Strategies',promotion:'Promotion Workflows',versioning:'Versioning'};
     let cur=3;
     for (const sec of diagSecs) {
       const secImgs=images.filter(img=>img.section===sec);
