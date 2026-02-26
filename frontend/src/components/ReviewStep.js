@@ -14,6 +14,7 @@ const EXPORT_SECTIONS = [
   { id:'cicd', label:'CI/CD Diagrams', icon:'🔄' },
   { id:'gitflow', label:'Git Flow', icon:'🌿' },
   { id:'deploy', label:'Deployment Strategies', icon:'🚀' },
+  { id:'promotion', label:'Promotion Workflows', icon:'🎯' },
   { id:'artifacts', label:'Artifact Registries', icon:'📦' },
   { id:'versioning', label:'Versioning', icon:'🏷️' },
   { id:'pricing', label:'Pricing', icon:'💰' },
@@ -28,7 +29,7 @@ const EXPORT_FORMATS = [
   { id:'pdf', icon:'📕', label:'PDF', desc:'PDF with diagrams', server:true },
   { id:'xml', icon:'📄', label:'XML', desc:'Structured XML export', server:true },
   { id:'sql', icon:'🗃️', label:'SQL', desc:'SQL INSERT statements', server:true },
-  { id:'zip', icon:'🗜️', label:'ZIP Bundle', desc:'ZIP with JSON+SQL+XML+HTML+Images', server:true },
+  { id:'zip', icon:'🗜️', label:'ZIP Bundle', desc:'ZIP with PDF+XLSX+Images+HTML+JSON+SQL+XML', server:true },
 ];
 
 const ReviewStep = ({ assessment, toast }) => {

@@ -6,8 +6,10 @@ RUN npm install --legacy-peer-deps
 COPY public/ ./public/
 COPY src/ ./src/
 ARG REACT_APP_GIT_SHA=dev
+ARG REACT_APP_GIT_BRANCH=main
 ENV REACT_APP_API_URL=/api
 ENV REACT_APP_GIT_SHA=$REACT_APP_GIT_SHA
+ENV REACT_APP_GIT_BRANCH=$REACT_APP_GIT_BRANCH
 RUN REACT_APP_VERSION=$(node -e "process.stdout.write(require('./package.json').version)") npm run build
 
 # ── Stage 2: Serve with nginx ──

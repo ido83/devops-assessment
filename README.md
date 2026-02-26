@@ -1,4 +1,4 @@
-# SecAssess - 2.1.0 - 1512b3b
+# SecAssess v2.1.0
 
 **Comprehensive DevOps & DevSecOps Platform Assessment Tool**
 
@@ -19,7 +19,7 @@ secassess/
 │   ├── Dockerfile              # Multi-stage: React build → nginx
 │   ├── nginx.conf              # Reverse proxy to backend /api
 │   ├── src/
-│   │   ├── App.js              # Main app — 11 tabs, routing, state management
+│   │   ├── App.js              # Main app — 12 tabs, routing, state management
 │   │   ├── components/
 │   │   │   ├── AssessmentStep.js   # 126-control checklist with severity filters
 │   │   │   ├── ArtifactRegistry.js # JFrog/Harbor/Nexus tree editor
@@ -29,6 +29,7 @@ secassess/
 │   │   │   ├── DeploymentStrategies.js # 18 deployment strategy templates
 │   │   │   ├── GanttChart.js        # Drag-drop Gantt timeline
 │   │   │   ├── GitFlowDiagram.js    # 6 branching strategy templates
+│   │   │   ├── PromotionDiagram.js  # 8 promotion workflow templates
 │   │   │   ├── PricingStep.js       # Cost estimation with phases
 │   │   │   ├── ReviewStep.js        # Score summary + 8-format export
 │   │   │   ├── VersioningDiagram.js # 6 versioning scheme templates
@@ -38,9 +39,11 @@ secassess/
 │   │   │   ├── cicdTemplates.js     # 11 CI/CD pipeline templates
 │   │   │   ├── deploymentTemplates.js # 18 deployment strategies
 │   │   │   ├── gitflowTemplates.js  # 6 Git branching templates
+│   │   │   ├── promotionTemplates.js  # 8 promotion workflow templates
 │   │   │   └── versioningTemplates.js # 6 versioning scheme templates
 │   │   ├── utils/
 │   │   │   ├── api.js               # REST client with all endpoints
+│   │   │   ├── diagramCapture.js    # SVG→PNG capture (3× scale, rounded corners)
 │   │   │   ├── exporters.js         # Client-side HTML/Markdown/JSON export
 │   │   │   └── graphEngine.js       # Shared: layout, export SVG/PNG, import
 │   │   └── styles/
@@ -48,8 +51,12 @@ secassess/
 │   └── public/
 │       └── index.html
 ├── docker-compose.yml          # 3-service stack (postgres, backend, frontend)
+├── Makefile                    # make up / down / build / logs — injects git branch+SHA automatically
 ├── secrets/
 │   └── db_pass.txt.example     # Copy to db_pass.txt — set a strong password (gitignored)
+├── images/
+│   ├── devops-2.svg            # DevOps circular-arrows logo source (inline in header)
+│   └── SecAssess_logo.png      # Reference logo asset
 ├── .gitignore                  # Excludes .env, secrets/*.txt, node_modules, build
 └── README.md                   # This file
 ```
@@ -80,19 +87,28 @@ cp secrets/db_pass.txt.example secrets/db_pass.txt
 # Edit secrets/db_pass.txt — replace placeholder with a strong password
 # Tip: openssl rand -base64 24
 
-# 4. Start all services — pass current git SHA so it appears in the UI header
-GIT_SHA=$(git rev-parse --short HEAD) docker compose up -d --build
+# 4. Build and start — the Makefile injects the current git branch + SHA automatically
+make up
 
 # 5. Open browser
 open http://localhost:3000
 ```
 
-> **Why `GIT_SHA`?**
-> The UI header displays `v<version> · <sha>` (e.g. `v2.1.0 · 3cc00e3`) directly under the app subtitle.
-> This is baked into the React bundle at build time — not read at runtime — so the container must be
-> rebuilt with `--build` whenever the SHA should update.
+### Makefile targets
+
+| Command | Description |
+|---------|-------------|
+| `make up` | Build images and start all services (injects current `GIT_BRANCH` + `GIT_SHA`) |
+| `make build` | Build images without starting containers |
+| `make down` | Stop and remove all containers |
+| `make logs` | Follow logs for all services |
+
+> **Why inject `GIT_BRANCH` and `GIT_SHA`?**
+> The UI header displays `v<version> · <branch> · <sha>` (e.g. `v2.1.0 · v21 · 3cc00e3`).
+> These are baked into the React bundle at build time — not read at runtime — so the container
+> must be rebuilt with `--build` whenever the values should update.
 > The version is read automatically from `frontend/package.json`.
-> Without `GIT_SHA`, the SHA shows as `dev`.
+> `make up` handles all of this; without it they default to `main` / `dev`.
 
 ### Local Development (without Docker)
 
@@ -123,7 +139,7 @@ REACT_APP_API_URL=http://localhost:4000/api npm start
 4. JSONB columns store complex nested data (diagrams, workflows, etc.)
 5. All input is sanitized via `san()` helper — strips null bytes, trims, limits length
 
-## 📊 Features — 11 Assessment Tabs
+## 📊 Features — 12 Assessment Tabs
 
 | Tab | Description |
 |-----|-------------|
@@ -132,6 +148,7 @@ REACT_APP_API_URL=http://localhost:4000/api npm start
 | 🔄 CI/CD | 11 pipeline templates (MLOps, AIOps, AWS, air-gapped, hybrid cloud) |
 | 🌿 Git Flow | 6 branching strategies (feature branch, trunk, GitHub/GitLab flow) |
 | 🚀 Deploy Strategy | 18 deployment templates (blue-green, canary, air-gapped, edge) |
+| 🎯 Promotion | 8 promotion workflow templates (artifact, env, hotfix, GitOps, feature flag, multi-region) |
 | 🏷️ Versioning | 6 versioning schemes (SemVer, CalVer, hash-based, monorepo) |
 | 📦 Artifacts | JFrog Artifactory, Harbor, Nexus registry tree editors |
 | 💰 Pricing | Cost estimation with engineer count, phases, currency |
@@ -146,11 +163,11 @@ REACT_APP_API_URL=http://localhost:4000/api npm start
 | HTML | Client-side | Styled dark-theme report |
 | Markdown | Client-side | For wikis, Git, documentation |
 | JSON | Client-side | Full structured data with all tabs |
-| Excel | Server-side | Multi-sheet workbook (all tabs) |
-| PDF | Server-side | HTML page with print styles — use Ctrl+P |
+| Excel | Server-side | Multi-sheet workbook (one sheet per tab + All_Diagrams); each workflow row has its diagram image embedded inline, rounded corners, correct aspect ratio |
+| PDF | Server-side | Full report with all sections + embedded diagram images |
 | XML | Server-side | Structured XML with CDATA sections |
 | SQL | Server-side | INSERT statement for PostgreSQL |
-| ZIP Bundle | Server-side | Complete assessment as portable JSON |
+| ZIP Bundle | Server-side | PDF + XLSX + images/ + HTML + JSON + SQL + XML |
 
 ## 🔒 Security
 
@@ -187,7 +204,7 @@ Triggered on push to `main` and all PRs:
 
 ## 📐 Graph Engine
 
-All diagram tabs (CI/CD, Git Flow, Deploy, Versioning) share `graphEngine.js`:
+All diagram tabs (CI/CD, Git Flow, Deploy, Promotion, Versioning) share `graphEngine.js`:
 
 ```javascript
 // Topological layout — longest-path column assignment
@@ -216,6 +233,7 @@ CREATE TABLE assessments (
   cicd_diagrams JSONB,          -- CI/CD workflow graphs
   gitflow_diagrams JSONB,       -- Git branching strategy graphs
   deployment_strategies JSONB,  -- Deployment pattern graphs
+  promotion_workflows JSONB,    -- Promotion workflow graphs
   versioning_diagrams JSONB,    -- Version scheme graphs
   artifact_repos JSONB,         -- Artifact registry trees
   custom_templates JSONB,       -- User-defined assessment templates
@@ -226,6 +244,8 @@ CREATE TABLE assessments (
 
 ## 📝 Version History
 
+- **v22** — DevOps circular-arrows logo (devops-2.svg inline, 8-stage multi-color: violet→indigo→lavender→sky-blue→cyan→mint→green→teal), logo scaled to 104×55 px, Dashboard auto-refresh after Truncate DB, logo proportions and spacing fix
+- **v21** — Promotion Workflows tab (8 templates, 10 node types), Excel inline diagram images per workflow row (rounded corners, correct aspect ratio), All_Diagrams sheet includes all 5 diagram sections, Makefile (`make up/down/build/logs`), always-mounted diagram tabs for reliable image capture, DevOps infinity logo, transparent header, branch+SHA in version line, ZIP includes PDF+XLSX+images/
 - **v15** — Versioning tab, server-side PDF/SQL/XML/ZIP exports, GitHub Actions CI/CD, SBOM, SemVer, enhanced Excel export, input validation, secrets management
 - **v14** — Deployment Strategies (18 templates), hybrid cloud CI/CD, truncate, export section selection
 - **v13** — CI/CD expansion (11 templates), Git Flow (6 templates), Artifact Registry, shared graph engine

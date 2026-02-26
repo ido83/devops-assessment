@@ -23,6 +23,7 @@ const SECTION_TAB = {
   cicd:       'CI-CD',
   gitflow:    'GitFlow',
   deploy:     'Deploy',
+  promotion:  'Promotion',
   versioning: 'Versioning',
 };
 
@@ -30,6 +31,7 @@ const SECTION_PREFIX = {
   cicd:       'CI/CD:',
   gitflow:    'Git Flow:',
   deploy:     'Deploy:',
+  promotion:  'Promo:',
   versioning: 'Version:',
 };
 
@@ -89,27 +91,42 @@ function cloneAndResolveSVG(svgEl) {
  */
 function svgStringToPng(svgStr, w, h) {
   return new Promise((resolve) => {
-    const SCALE  = 3;                         // ≥2 per spec; 3 for print-quality icons
-    const canvas = document.createElement('canvas');
-    canvas.width  = w * SCALE;
-    canvas.height = h * SCALE;
+    const SCALE  = 3;
+    const cw = w * SCALE;
+    const ch = h * SCALE;
+    const r  = 14 * SCALE;           // 14 px corner radius at 1× → 42 px at 3×
 
+    const canvas = document.createElement('canvas');
+    canvas.width  = cw;
+    canvas.height = ch;
     const ctx = canvas.getContext('2d');
-    /* White fill first so transparent areas don't show through */
+
+    /* Rounded-rectangle clip — applied once, affects all subsequent draws */
+    ctx.beginPath();
+    ctx.moveTo(r, 0);
+    ctx.lineTo(cw - r, 0);
+    ctx.quadraticCurveTo(cw, 0,  cw, r);
+    ctx.lineTo(cw, ch - r);
+    ctx.quadraticCurveTo(cw, ch, cw - r, ch);
+    ctx.lineTo(r, ch);
+    ctx.quadraticCurveTo(0, ch,  0, ch - r);
+    ctx.lineTo(0, r);
+    ctx.quadraticCurveTo(0, 0,   r, 0);
+    ctx.closePath();
+    ctx.clip();
+
+    /* Dark background inside the rounded clip */
     ctx.fillStyle = '#07070d';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0, 0, cw, ch);
 
     const img = new Image();
-    /* allowTaint equivalent: data-URI is same-origin, no taint */
     img.crossOrigin = 'anonymous';
-
     img.onload = () => {
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, cw, ch);
       resolve(canvas.toDataURL('image/png').split(',')[1]);
     };
     img.onerror = () => resolve(null);
 
-    /* Encode SVG as a data URI — avoids all CORS / taint issues */
     img.src = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgStr)));
   });
 }
