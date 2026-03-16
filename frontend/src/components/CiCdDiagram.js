@@ -60,7 +60,32 @@ function PipelineDiagram({ pipeline, onChange, onDelete, toast }) {
   };
   const gateIds = new Set(nodes.filter(n => n.type === 'gate').map(n => n.id));
   const gateMaxCol = columns.findIndex(col => col.some(n => !gateIds.has(n.id)));
-  const gateZoneW = (gateMaxCol > 0 ? gateMaxCol : 0) * 150;
+  const gateZoneW = (() => {
+    if (gateMaxCol <= 0) return 0;
+    const gateXs = nodes.filter(n => gateIds.has(n.id) && positions[n.id]).map(n => positions[n.id].x);
+    const nonGateXs = nodes.filter(n => !gateIds.has(n.id) && positions[n.id]).map(n => positions[n.id].x);
+    if (!gateXs.length || !nonGateXs.length) return 0;
+    const zoneRight = Math.round((Math.max(...gateXs) + nodeR + Math.min(...nonGateXs) - nodeR) / 2);
+    return Math.max(0, zoneRight - 20);
+  })();
+  // Vertical bounds — GATES rect is centered on the gate nodes' visual midpoint
+  // (diamond tip → sub-label) then expanded symmetrically to cover the full
+  // pipeline content height, so gates always sit on the same horizontal axis
+  // as adjacent non-gate nodes regardless of how many rows those columns have.
+  const gateNodeYs = nodes.filter(n => gateIds.has(n.id) && positions[n.id]).map(n => positions[n.id].y);
+  const allNodeYs  = nodes.filter(n => positions[n.id]).map(n => positions[n.id].y);
+  let gateRectY = 12, gateRectH = svgH - 24;
+  if (gateNodeYs.length && allNodeYs.length) {
+    // Visual midpoint of gate content: diamond top (-26) to sub-label bottom (+60)
+    const gateVisMid = (Math.min(...gateNodeYs) - 26 + Math.max(...gateNodeYs) + 60) / 2;
+    // Half-height must reach both ends of the full pipeline content area
+    const halfH = Math.max(
+      gateVisMid - (Math.min(...allNodeYs) - nodeR - 8),
+      Math.max(...allNodeYs) + nodeR + 54 - gateVisMid
+    ) + 4;
+    gateRectY = Math.max(4, Math.round(gateVisMid - halfH));
+    gateRectH = Math.round(halfH * 2);
+  }
 
   return (
     <div className="pipeline-card">
@@ -87,7 +112,7 @@ function PipelineDiagram({ pipeline, onChange, onDelete, toast }) {
       <div className="pipeline-svg-wrap">
         <svg ref={svgRef} width={svgW} height={svgH} viewBox={`0 0 ${svgW} ${svgH}`} className="pipeline-svg" data-section="cicd" data-diagram-name={pipeline.name || 'pipeline'}>
           <defs><marker id="ah" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="var(--text-muted)" /></marker></defs>
-          {gateZoneW > 0 && <><rect x={20} y={12} width={gateZoneW} height={svgH-24} rx="12" fill="rgba(255,59,92,0.04)" stroke="rgba(255,59,92,0.18)" strokeDasharray="6 3" /><text x={20+gateZoneW/2} y={28} fontSize="9" fill="#ff3b5c" fontFamily="'JetBrains Mono',monospace" textAnchor="middle" letterSpacing="1.5">GATES</text></>}
+          {gateZoneW > 0 && <><rect x={20} y={gateRectY} width={gateZoneW} height={gateRectH} rx="12" fill="rgba(255,59,92,0.04)" stroke="rgba(255,59,92,0.18)" strokeDasharray="6 3" /><text x={20+gateZoneW/2} y={gateRectY+14} fontSize="9" fill="#ff3b5c" fontFamily="'JetBrains Mono',monospace" textAnchor="middle" letterSpacing="1.5">GATES</text></>}
           {edges.map((e, i) => renderEdge(e, i))}
           {nodes.map(n => { const p = positions[n.id]; if (!p) return null; const c = STAGE_COLORS[n.type] || STAGE_COLORS.custom; const sel = editNodeId === n.id || connectMode?.from === n.id;
             return (<g key={n.id} style={{ cursor: connectMode ? 'crosshair' : 'pointer' }} onClick={() => handleNodeClick(n.id)}>

@@ -414,6 +414,155 @@ app.get('/api/export/xml/:id', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+/* ═══ Assessment categories — mirrors frontend/src/data/assessmentData.js ═══ */
+const ASSESSMENT_CATS=[
+  {t:'CI/CD Pipeline Security',i:'⛓️',items:[
+    {id:'ci-1',tx:'Pipeline-as-code in VCS with branch protection',sv:'critical'},
+    {id:'ci-2',tx:'Secrets management via vault — no hardcoded credentials',sv:'critical'},
+    {id:'ci-3',tx:'Automated SAST scanning in pipeline (Semgrep, SonarQube)',sv:'critical'},
+    {id:'ci-4',tx:'DAST scanning against staging before production deploy',sv:'high'},
+    {id:'ci-5',tx:'SCA dependency vulnerability scanning on every build',sv:'high'},
+    {id:'ci-6',tx:'Artifact signing and provenance attestation (SLSA Level 3)',sv:'high'},
+    {id:'ci-7',tx:'Pipeline execution with least-privilege ephemeral accounts',sv:'high'},
+    {id:'ci-8',tx:'Build reproducibility and hermetic build environments',sv:'medium'},
+    {id:'ci-9',tx:'Automated rollback on deployment failure with health checks',sv:'medium'},
+    {id:'ci-10',tx:'Multi-stage pipeline with gated approvals for production',sv:'high'},
+    {id:'ci-11',tx:'Pipeline audit logging and tamper-evident build records',sv:'high'},
+    {id:'ci-12',tx:'Ephemeral build agents — no persistent CI runner state',sv:'medium'},
+    {id:'ci-13',tx:'Pipeline-level RBAC for build/deploy/release permissions',sv:'high'},
+    {id:'ci-14',tx:'Canary/blue-green deployment with automated traffic shifting',sv:'medium'},
+  ]},
+  {t:'Container & Image Security',i:'🐳',items:[
+    {id:'cs-1',tx:'Base images from trusted registries with verified signatures',sv:'critical'},
+    {id:'cs-2',tx:'Container image vulnerability scanning in CI (Trivy, Snyk, Grype)',sv:'critical'},
+    {id:'cs-3',tx:'Non-root container execution enforced by default',sv:'critical'},
+    {id:'cs-4',tx:'Read-only root filesystem where possible',sv:'high'},
+    {id:'cs-5',tx:'Minimal/distroless base images to reduce attack surface',sv:'high'},
+    {id:'cs-6',tx:'Container resource limits (CPU, memory, PID) enforced',sv:'medium'},
+    {id:'cs-7',tx:'Private container registry with access controls and scanning',sv:'high'},
+    {id:'cs-8',tx:'Runtime security monitoring and threat detection (Falco)',sv:'high'},
+    {id:'cs-9',tx:'Immutable container tags — no "latest" tag in production',sv:'medium'},
+    {id:'cs-10',tx:'seccomp and AppArmor/SELinux profiles applied',sv:'high'},
+    {id:'cs-11',tx:'Container image SBOMs generated and stored alongside images',sv:'medium'},
+    {id:'cs-12',tx:'Multi-stage Docker builds — no build tools in production images',sv:'medium'},
+  ]},
+  {t:'Kubernetes & Orchestration',i:'☸️',items:[
+    {id:'k8-1',tx:'RBAC configured with least-privilege roles and bindings',sv:'critical'},
+    {id:'k8-2',tx:'Network Policies enforce pod-to-pod traffic segmentation',sv:'critical'},
+    {id:'k8-3',tx:'Pod Security Standards (restricted profile) enforced cluster-wide',sv:'critical'},
+    {id:'k8-4',tx:'etcd encryption at rest enabled',sv:'high'},
+    {id:'k8-5',tx:'API server audit logging enabled and forwarded to SIEM',sv:'high'},
+    {id:'k8-6',tx:'Service mesh for mTLS between services (Istio, Linkerd)',sv:'high'},
+    {id:'k8-7',tx:'GitOps deployment model (ArgoCD, Flux) with drift detection',sv:'medium'},
+    {id:'k8-8',tx:'Horizontal Pod Autoscaling and cluster autoscaling configured',sv:'medium'},
+    {id:'k8-9',tx:'Admission controllers (OPA/Gatekeeper, Kyverno) for policy enforcement',sv:'high'},
+    {id:'k8-10',tx:'Regular CIS Kubernetes Benchmark compliance scans',sv:'high'},
+    {id:'k8-11',tx:'Namespace isolation with resource quotas and limit ranges',sv:'medium'},
+    {id:'k8-12',tx:'Kubernetes secrets encrypted via external KMS',sv:'high'},
+    {id:'k8-13',tx:'Pod disruption budgets defined for critical workloads',sv:'medium'},
+    {id:'k8-14',tx:'Egress traffic filtering — pods cannot reach arbitrary internet',sv:'high'},
+  ]},
+  {t:'Infrastructure as Code',i:'🏗️',items:[
+    {id:'iac-1',tx:'IaC templates scanned for misconfigurations (Checkov, tfsec)',sv:'critical'},
+    {id:'iac-2',tx:'Terraform/Pulumi state encrypted and stored remotely with locking',sv:'high'},
+    {id:'iac-3',tx:'Module versioning and registry for reusable infrastructure components',sv:'medium'},
+    {id:'iac-4',tx:'Drift detection and automated reconciliation configured',sv:'medium'},
+    {id:'iac-5',tx:'Plan/apply separation with mandatory review on infra changes',sv:'high'},
+    {id:'iac-6',tx:'No secrets in IaC templates — dynamic secret injection only',sv:'critical'},
+    {id:'iac-7',tx:'Tagging strategy enforced for cost allocation and ownership',sv:'low'},
+    {id:'iac-8',tx:'Blast radius minimization via modular state separation',sv:'medium'},
+    {id:'iac-9',tx:'Policy-as-code guardrails prevent non-compliant resource creation',sv:'high'},
+    {id:'iac-10',tx:'Infrastructure cost estimation in PR reviews (Infracost)',sv:'low'},
+  ]},
+  {t:'Observability & Incident Response',i:'📡',items:[
+    {id:'mon-1',tx:'Centralized logging with structured log format (ELK, Loki)',sv:'high'},
+    {id:'mon-2',tx:'Distributed tracing across services (Jaeger, Tempo, X-Ray)',sv:'medium'},
+    {id:'mon-3',tx:'SLI/SLO definitions with error budget tracking',sv:'medium'},
+    {id:'mon-4',tx:'Security event monitoring and SIEM integration (Splunk, Sentinel)',sv:'critical'},
+    {id:'mon-5',tx:'Runbooks for common incidents documented and tested',sv:'medium'},
+    {id:'mon-6',tx:'On-call rotation with escalation policies defined',sv:'medium'},
+    {id:'mon-7',tx:'Anomaly detection for security and performance events',sv:'high'},
+    {id:'mon-8',tx:'Log retention policies compliant with regulatory requirements',sv:'high'},
+    {id:'mon-9',tx:'Post-incident review (blameless postmortems) process in place',sv:'medium'},
+    {id:'mon-10',tx:'Chaos engineering practices for resilience validation',sv:'low'},
+    {id:'mon-11',tx:'Real-time alerting for security-critical events',sv:'critical'},
+    {id:'mon-12',tx:'Golden signals monitoring (latency, traffic, errors, saturation)',sv:'high'},
+  ]},
+  {t:'Identity & Access Management',i:'🔐',items:[
+    {id:'iam-1',tx:'SSO/SAML/OIDC integration for all DevOps tooling',sv:'high'},
+    {id:'iam-2',tx:'MFA enforced for all privileged and production access',sv:'critical'},
+    {id:'iam-3',tx:'Just-in-time (JIT) access for production environments',sv:'high'},
+    {id:'iam-4',tx:'Service account credentials rotated automatically on schedule',sv:'high'},
+    {id:'iam-5',tx:'API key and token lifecycle management with expiration',sv:'high'},
+    {id:'iam-6',tx:'Quarterly access reviews for all infrastructure access',sv:'medium'},
+    {id:'iam-7',tx:'Break-glass procedure documented for emergency access',sv:'medium'},
+    {id:'iam-8',tx:'Zero-trust network access (ZTNA) model implemented',sv:'high'},
+    {id:'iam-9',tx:'Workload identity (SPIFFE/SPIRE) for service-to-service auth',sv:'high'},
+    {id:'iam-10',tx:'Privileged access management (PAM) with session recording',sv:'high'},
+  ]},
+  {t:'Compliance & Governance',i:'📋',items:[
+    {id:'com-1',tx:'SBOM generation for all releases (CycloneDX, SPDX)',sv:'high'},
+    {id:'com-2',tx:'License compliance scanning for open-source dependencies',sv:'medium'},
+    {id:'com-3',tx:'Change management process with audit trail',sv:'high'},
+    {id:'com-4',tx:'Data classification and handling policies enforced in pipelines',sv:'high'},
+    {id:'com-5',tx:'Regulatory framework mapping (SOC2, ISO27001, NIST CSF, PCI-DSS)',sv:'high'},
+    {id:'com-6',tx:'Automated compliance-as-code checks in CI/CD',sv:'medium'},
+    {id:'com-7',tx:'Vulnerability disclosure and patching SLA defined and tracked',sv:'high'},
+    {id:'com-8',tx:'Third-party vendor security assessment process',sv:'medium'},
+    {id:'com-9',tx:'Automated evidence collection for audit readiness (Vanta, Drata)',sv:'medium'},
+    {id:'com-10',tx:'Data residency and sovereignty controls enforced',sv:'high'},
+  ]},
+  {t:'Software Supply Chain',i:'🔗',items:[
+    {id:'sc-1',tx:'Dependency pinning with lock files committed to VCS',sv:'high'},
+    {id:'sc-2',tx:'Private package registry/proxy for dependency caching and control',sv:'medium'},
+    {id:'sc-3',tx:'SLSA framework adoption (Level 2+ build integrity)',sv:'high'},
+    {id:'sc-4',tx:'Automated dependency update PRs with vulnerability context',sv:'medium'},
+    {id:'sc-5',tx:'Typosquatting and malicious package detection controls',sv:'high'},
+    {id:'sc-6',tx:'Code signing for all release artifacts',sv:'high'},
+    {id:'sc-7',tx:'VCS branch protection with required reviews and status checks',sv:'high'},
+    {id:'sc-8',tx:'Pre-commit hooks for secret detection and linting',sv:'medium'},
+    {id:'sc-9',tx:'VEX statements for known vulnerabilities',sv:'medium'},
+    {id:'sc-10',tx:'OpenSSF Scorecard monitoring for critical dependencies',sv:'medium'},
+  ]},
+  {t:'Cloud Security Posture',i:'☁️',items:[
+    {id:'cld-1',tx:'CSPM tool deployed (Prisma Cloud, Prowler, ScoutSuite)',sv:'critical'},
+    {id:'cld-2',tx:'No public S3 buckets/blobs — private storage access by default',sv:'critical'},
+    {id:'cld-3',tx:'Cloud IAM policies follow least-privilege — no wildcard permissions',sv:'critical'},
+    {id:'cld-4',tx:'VPC flow logs enabled and forwarded to security monitoring',sv:'high'},
+    {id:'cld-5',tx:'Encryption at rest enabled for all data stores and volumes',sv:'high'},
+    {id:'cld-6',tx:'CloudTrail/Activity Log enabled in all regions and accounts',sv:'high'},
+    {id:'cld-7',tx:'Security groups reviewed — no 0.0.0.0/0 ingress on sensitive ports',sv:'critical'},
+    {id:'cld-8',tx:'Multi-account strategy with landing zone (Control Tower)',sv:'medium'},
+    {id:'cld-9',tx:'Cloud workload protection platform (CWPP) for runtime threats',sv:'high'},
+    {id:'cld-10',tx:'Automated remediation of critical misconfigurations',sv:'medium'},
+  ]},
+  {t:'API & Application Security',i:'🛡️',items:[
+    {id:'api-1',tx:'API gateway with auth, rate limiting, and request validation',sv:'critical'},
+    {id:'api-2',tx:'OAuth 2.0 / OIDC token-based authentication for all APIs',sv:'high'},
+    {id:'api-3',tx:'Input validation and output encoding at API boundaries',sv:'critical'},
+    {id:'api-4',tx:'API schema validation (OpenAPI/Swagger) enforced in CI/CD',sv:'medium'},
+    {id:'api-5',tx:'WAF deployed in front of public-facing services',sv:'high'},
+    {id:'api-6',tx:'DDoS protection enabled (CloudFlare, AWS Shield, Azure DDoS)',sv:'high'},
+    {id:'api-7',tx:'API versioning strategy with deprecation lifecycle',sv:'low'},
+    {id:'api-8',tx:'Sensitive data masking in API responses and logs (PII, tokens)',sv:'high'},
+    {id:'api-9',tx:'CORS policies — no wildcard origins in production',sv:'medium'},
+    {id:'api-10',tx:'API security testing automated (OWASP ZAP, Burp Suite, Nuclei)',sv:'high'},
+  ]},
+  {t:'Data Protection & Encryption',i:'🗄️',items:[
+    {id:'dp-1',tx:'Encryption in transit (TLS 1.2+) enforced for all traffic',sv:'critical'},
+    {id:'dp-2',tx:'Encryption at rest for databases, object stores, and volumes',sv:'critical'},
+    {id:'dp-3',tx:'Centralized key management with automatic rotation (AWS KMS)',sv:'high'},
+    {id:'dp-4',tx:'Database backup encryption and integrity verification',sv:'high'},
+    {id:'dp-5',tx:'Backup restoration tested on a regular schedule (quarterly)',sv:'medium'},
+    {id:'dp-6',tx:'PII/sensitive data discovery and classification scanning',sv:'high'},
+    {id:'dp-7',tx:'Data retention and deletion policies implemented and automated',sv:'medium'},
+    {id:'dp-8',tx:'Database activity monitoring (DAM) for privileged queries',sv:'high'},
+  ]},
+];
+/* Flat lookup: controlId → { cat, icon, tx, sv } */
+const ASSESSMENT_CTRL={};
+ASSESSMENT_CATS.forEach(c=>c.items.forEach(it=>{ASSESSMENT_CTRL[it.id]={cat:c.t,icon:c.i,tx:it.tx,sv:it.sv};}));
+
 /* ═══════════════════════════════════════════════════════════════════
  * EXCEL GENERATOR — returns a Buffer (used by Excel endpoint + ZIP)
  * ═══════════════════════════════════════════════════════════════════ */
@@ -484,32 +633,139 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
   [['Organization',dbRow.org_name],['Assessor',dbRow.assessor_name],['Date',dbRow.assessment_date],['Environment',dbRow.environment],['Score',dbRow.score+'%'],['Status',dbRow.status]].forEach(([f,v])=>ss.addRow({f,v}));
   styleHeaderRow(ss,2);
 
-  /* SHEET 2: Assessment */
+  /* SHEET 2: Assessment — grouped by category with full control descriptions */
   if (secIncludes('assessment')) {
     const as=wb.addWorksheet('Assessment');
-    as.columns=[{header:'Control ID',key:'id',width:18},{header:'Status',key:'status',width:14},{header:'Notes',key:'notes',width:60}];
-    styleHeaderRow(as,3);
-    Object.entries(dbRow.responses||{}).forEach(([id,r],idx)=>{
-      const dataRow=as.addRow({id,status:r.status||'',notes:r.notes||''});
-      if(idx%2===0) dataRow.eachCell({includeEmpty:true},cell=>{cell.fill=altFill;});
-      const statusCell=dataRow.getCell('status');
-      statusCell.font={bold:true,color:{argb:{pass:'FF00B894',fail:'FFE63757',partial:'FFF59E0B',na:'FF9CA3AF'}[r.status]||'FF8B88A2'}};
-    });
+    as.getColumn(1).width=58; as.getColumn(2).width=12; as.getColumn(3).width=14; as.getColumn(4).width=62;
+    const resp=dbRow.responses||{};
+    const SEV_COLOR={critical:'FFE63757',high:'FFFF8C42',medium:'FFFFD166',low:'FF66D9C2'};
+    const STA_COLOR={pass:'FF00B894',fail:'FFE63757',partial:'FFF59E0B',na:'FF9CA3AF'};
+    const STA_BG  ={pass:'FFE8FBF5',fail:'FFFDE8EB',partial:'FFFEF9E7',na:'FFF3F4F6'};
+    let asCur=1;
+    // Title row
+    const titleR=as.getRow(asCur++);
+    titleR.getCell(1).value=`Assessment Report — ${dbRow.org_name||''}`;
+    titleR.getCell(1).font={bold:true,size:14,color:PURPLE};
+    titleR.getCell(1).fill=titleFill; as.mergeCells(asCur-1,1,asCur-1,4); titleR.height=26;
+    asCur++; // blank gap
+    for (const cat of ASSESSMENT_CATS) {
+      const catResps=cat.items.filter(it=>resp[it.id]&&resp[it.id].status);
+      // banner: always show all categories (skip if no responses at all)
+      if (!catResps.length) continue;
+      // Category banner
+      const bannerR=as.getRow(asCur++);
+      bannerR.getCell(1).value=`${cat.i}  ${cat.t}  —  ${catResps.length} / ${cat.items.length} assessed`;
+      bannerR.getCell(1).font={bold:true,size:12,color:PURPLE};
+      bannerR.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFEDE9FF'}};
+      bannerR.getCell(1).alignment={vertical:'middle'};
+      as.mergeCells(asCur-1,1,asCur-1,4); bannerR.height=22;
+      // Column header
+      const hdrR=as.getRow(asCur++);
+      ['Control',`Severity`,'Status','Notes'].forEach((h,i)=>{
+        const c=hdrR.getCell(i+1); c.value=h; c.font={bold:true,color:PURPLE,size:10};
+        c.fill=headerFill; c.alignment={vertical:'middle'}; c.border={bottom:{style:'thin',color:PURPLE}};
+      }); hdrR.height=18;
+      // Controls
+      cat.items.forEach((it,idx)=>{
+        const r=resp[it.id]||{}; const st=r.status||''; const notes=r.notes||'';
+        if (!st) return; // skip unassessed
+        const row=as.getRow(asCur++);
+        row.getCell(1).value=it.tx;
+        row.getCell(1).alignment={wrapText:true,vertical:'top'};
+        // Severity cell
+        const sevCell=row.getCell(2);
+        sevCell.value=it.sv; sevCell.font={bold:true,size:10,color:{argb:SEV_COLOR[it.sv]||'FF636E72'}};
+        sevCell.alignment={horizontal:'center',vertical:'top'};
+        // Status cell
+        const staCell=row.getCell(3);
+        staCell.value=st; staCell.font={bold:true,size:10,color:{argb:STA_COLOR[st]||'FF8B88A2'}};
+        staCell.fill={type:'pattern',pattern:'solid',fgColor:{argb:STA_BG[st]||'FFFFFFFF'}};
+        staCell.alignment={horizontal:'center',vertical:'top'};
+        // Notes cell
+        row.getCell(4).value=notes; row.getCell(4).alignment={wrapText:true,vertical:'top'};
+        row.height=notes.length>60?30:18;
+        if(idx%2===0){[1,2,4].forEach(c=>{if(!row.getCell(c).fill?.fgColor?.argb?.startsWith('FF'))row.getCell(c).fill=altFill;});}
+      });
+      asCur++; // blank separator between categories
+    }
   }
 
-  /* SHEET 3: Pricing */
+  /* SHEET 3: Pricing & Resource Estimation */
   const pr=dbRow.pricing||{};
   if (pr.engineers && secIncludes('pricing')) {
-    const ps=wb.addWorksheet('Pricing');
-    ps.columns=[{header:'Field',key:'f',width:32},{header:'Value',key:'v',width:28}];
-    styleHeaderRow(ps,2);
-    const rate=(pr.hourlyRate||0)*160; const base=rate*pr.engineers*pr.duration;
-    const total=base+base*((pr.contingency||0)/100);
-    [['Engineers',pr.engineers],['Duration',pr.duration+' months'],['Hourly Rate',pr.hourlyRate],['Currency',pr.currency||'ILS'],['Estimation Mode',pr.estimationMode||'price'],['Total Cost',total.toLocaleString()]].forEach(([f,v])=>ps.addRow({f,v}));
-    if (pr.phases) { ps.addRow({}); ps.addRow({f:'Phase',v:'Allocation'}); pr.phases.forEach(p=>ps.addRow({f:p.name,v:p.percentage+'%'})); }
+    const ps=wb.addWorksheet('Pricing & Resource Estimation');
+    ps.getColumn(1).width=34; ps.getColumn(2).width=22; ps.getColumn(3).width=22; ps.getColumn(4).width=22; ps.getColumn(5).width=22;
+    const cur=pr.currency||'USD'; const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    const monthly=(pr.hourlyRate||0)*160;
+    const base=monthly*(pr.engineers||1)*(pr.duration||1);
+    const contAmt=base*((pr.contingency||0)/100);
+    const total=base+contAmt;
+    let pCur=1;
+    // Title
+    const ptitle=ps.getRow(pCur++); ptitle.getCell(1).value='Pricing & Resource Estimation';
+    ptitle.getCell(1).font={bold:true,size:14,color:PURPLE}; ptitle.getCell(1).fill=titleFill;
+    ps.mergeCells(pCur-1,1,pCur-1,5); ptitle.height=26; pCur++;
+    // Section 1: Resource Summary
+    pCur=addSectionBanner(ps,'Resource Summary',pCur);
+    ['Role / Parameter','Value','','',''].forEach((h,i)=>{const c=ps.getRow(pCur).getCell(i+1);c.value=h;c.font={bold:true,color:PURPLE,size:10};c.fill=headerFill;c.alignment={vertical:'middle'};});
+    ps.getRow(pCur).height=18; pCur++;
+    [['DevOps Engineers',pr.engineers],['Project Duration',`${pr.duration} months`],['Hourly Rate',`${pr.hourlyRate} ${cur}/hr`],['Monthly Rate / Engineer',`${fmt(monthly)} ${cur}`],['Total Person-Months',`${((pr.engineers||1)*(pr.duration||1))} person-months`],['Currency',cur]]
+      .forEach(([f,v],idx)=>{const r=ps.getRow(pCur++);r.getCell(1).value=f;r.getCell(2).value=v;if(idx%2===0){[1,2].forEach(c=>r.getCell(c).fill=altFill);}});
+    pCur++;
+    // Section 2: Cost Breakdown
+    pCur=addSectionBanner(ps,'Cost Breakdown',pCur);
+    ['Item','Amount ('+cur+')','','',''].forEach((h,i)=>{const c=ps.getRow(pCur).getCell(i+1);c.value=h;c.font={bold:true,color:PURPLE,size:10};c.fill=headerFill;c.alignment={vertical:'middle'};});
+    ps.getRow(pCur).height=18; pCur++;
+    [['Base Cost (engineers × rate × duration)',base],['Contingency ('+(pr.contingency||0)+'%)',contAmt],['Total Project Cost',total]]
+      .forEach(([f,v],idx)=>{const r=ps.getRow(pCur++);r.getCell(1).value=f;r.getCell(2).value=fmt(v);if(idx===2){r.getCell(1).font={bold:true,color:PURPLE};r.getCell(2).font={bold:true,color:PURPLE};}else if(idx%2===0){[1,2].forEach(c=>r.getCell(c).fill=altFill);}});
   }
 
-  /* SHEET 4: CI-CD */
+  /* SHEET 4: Phase Allocation */
+  if (pr.engineers && secIncludes('pricing') && pr.phases?.length) {
+    const pas=wb.addWorksheet('Phase Allocation');
+    pas.getColumn(1).width=36; pas.getColumn(2).width=16; pas.getColumn(3).width=14; pas.getColumn(4).width=22; pas.getColumn(5).width=18;
+    const cur=pr.currency||'USD'; const fmt=v=>v.toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+    const monthly=(pr.hourlyRate||0)*160;
+    const base=monthly*(pr.engineers||1)*(pr.duration||1);
+    const contAmt=base*((pr.contingency||0)/100);
+    const total=base+contAmt;
+    let paCur=1;
+    const paTitle=pas.getRow(paCur++);
+    paTitle.getCell(1).value='Phase Allocation';
+    paTitle.getCell(1).font={bold:true,size:14,color:PURPLE};
+    paTitle.getCell(1).fill=titleFill;
+    pas.mergeCells(paCur-1,1,paCur-1,5);
+    paTitle.height=26;
+    paCur++;
+    ['Phase','Allocation %','Months','Estimated Cost ('+cur+')','% of Job'].forEach((h,i)=>{
+      const c=pas.getRow(paCur).getCell(i+1);
+      c.value=h; c.font={bold:true,color:PURPLE,size:10}; c.fill=headerFill; c.alignment={vertical:'middle'};
+    });
+    pas.getRow(paCur).height=18; paCur++;
+    let phasePctTotal=0, phaseCostTotal=0, phaseMonthsTotal=0;
+    pr.phases.forEach((p,idx)=>{
+      const pct=Number(p.percentage)||0;
+      const months=Number(p.months)||0;
+      const phaseCost=total*(pct/100);
+      phasePctTotal+=pct; phaseCostTotal+=phaseCost; phaseMonthsTotal+=months;
+      const r=pas.getRow(paCur++);
+      r.getCell(1).value=p.name;
+      r.getCell(2).value=pct+'%';
+      r.getCell(3).value=months || '';
+      r.getCell(4).value=fmt(phaseCost);
+      r.getCell(5).value=pct+'%';
+      if(idx%2===0)[1,2,3,4,5].forEach(c=>r.getCell(c).fill=altFill);
+    });
+    const totR=pas.getRow(paCur++);
+    totR.getCell(1).value='Total';
+    totR.getCell(2).value=phasePctTotal+'%';
+    totR.getCell(3).value=phaseMonthsTotal || '';
+    totR.getCell(4).value=fmt(phaseCostTotal);
+    totR.getCell(5).value=phasePctTotal+'%';
+    [1,2,3,4,5].forEach(c=>{totR.getCell(c).font={bold:true,color:PURPLE};totR.getCell(c).border={top:{style:'thin',color:PURPLE}};});
+  }
+
+  /* SHEET 5: CI-CD */
   const cicd=dbRow.cicd_diagrams||{};
   if (cicd.workflows?.length && secIncludes('cicd')) {
     const ws=wb.addWorksheet('CI-CD'); setImageColWidths(ws);
@@ -519,7 +775,7 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     for(const wf of cicd.workflows){for(const p of(wf.pipelines||[])){const r=ws.getRow(cur);r.getCell(1).value=wf.name;r.getCell(2).value=p.name;r.getCell(3).value=(p.nodes||[]).length;r.getCell(4).value=p.description||'';cur++;const img=findImg(images,'cicd',p.name);if(img){try{cur=anchorImage(ws,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}}
   }
 
-  /* SHEET 5: GitFlow */
+  /* SHEET 6: GitFlow */
   const gf=dbRow.gitflow_diagrams||{};
   if (gf.flows?.length && secIncludes('gitflow')) {
     const gs=wb.addWorksheet('GitFlow'); setImageColWidths(gs);
@@ -529,7 +785,7 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     for(const f of gf.flows){const r=gs.getRow(cur);r.getCell(1).value=f.name;r.getCell(2).value=(f.nodes||[]).length;r.getCell(3).value=f.description||'';cur++;const img=findImg(images,'gitflow',f.name);if(img){try{cur=anchorImage(gs,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
-  /* SHEET 6: Deploy */
+  /* SHEET 7: Deploy */
   const ds=dbRow.deployment_strategies||{};
   if (ds.strategies?.length && secIncludes('deploy')) {
     const dss=wb.addWorksheet('Deploy'); setImageColWidths(dss);
@@ -539,7 +795,7 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     for(const s of ds.strategies){const r=dss.getRow(cur);r.getCell(1).value=s.name;r.getCell(2).value=s.cat||'';r.getCell(3).value=(s.nodes||[]).length;r.getCell(4).value=s.description||'';cur++;const img=findImg(images,'deploy',s.name);if(img){try{cur=anchorImage(dss,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
-  /* SHEET 7: Promotion */
+  /* SHEET 8: Promotion */
   const pw_data=dbRow.promotion_workflows||{};
   if (pw_data.workflows?.length && secIncludes('promotion')) {
     const pws=wb.addWorksheet('Promotion'); setImageColWidths(pws);
@@ -549,7 +805,7 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     for(const w of pw_data.workflows){const r=pws.getRow(cur);r.getCell(1).value=w.name;r.getCell(2).value=w.cat||'';r.getCell(3).value=(w.nodes||[]).length;r.getCell(4).value=w.description||'';cur++;const img=findImg(images,'promotion',w.name);if(img){try{cur=anchorImage(pws,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
-  /* SHEET 8: Versioning */
+  /* SHEET 9: Versioning */
   const vd=dbRow.versioning_diagrams||{};
   if (vd.flows?.length && secIncludes('versioning')) {
     const vs=wb.addWorksheet('Versioning'); setImageColWidths(vs);
@@ -559,7 +815,7 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     for(const f of vd.flows){const r=vs.getRow(cur);r.getCell(1).value=f.name;r.getCell(2).value=(f.nodes||[]).length;r.getCell(3).value=f.description||'';cur++;const img=findImg(images,'versioning',f.name);if(img){try{cur=anchorImage(vs,Buffer.from(img.data,'base64'),img.width||600,img.height||300,cur);}catch{}}}
   }
 
-  /* SHEET 8: Artifacts */
+  /* SHEET 10: Artifacts */
   const ar=dbRow.artifact_repos||{};
   if (ar.registries?.length && secIncludes('artifacts')) {
     const ars=wb.addWorksheet('Artifacts');
@@ -568,19 +824,55 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     ar.registries.forEach(r=>(r.repos||[]).forEach(rp=>ars.addRow({r:r.name,t:r.registryType,n:rp.name,c:rp.repoClass,p:rp.pkgType})));
   }
 
-  /* SHEET 9: Gantt */
-  const ganttTasks=dbRow.gantt?.tasks||[];
+  /* SHEET 9: Gantt — data table + visual week-bar timeline */
+  const ganttData=dbRow.gantt||{}; const ganttTasks=ganttData.tasks||[]; const ganttCats=ganttData.categories||{};
   if (ganttTasks.length && secIncludes('gantt')) {
     const gs=wb.addWorksheet('Gantt');
-    gs.columns=[{header:'Task',key:'n',width:38},{header:'Category',key:'c',width:16},{header:'Start Week',key:'s',width:14},{header:'Duration (wks)',key:'d',width:16},{header:'Dependencies',key:'p',width:20}];
-    styleHeaderRow(gs,5);
+    const totalWks=Math.min(ganttData.totalWeeks||12,26); // cap visual at 26 weeks
+    gs.getColumn(1).width=36; gs.getColumn(2).width=16; gs.getColumn(3).width=18; gs.getColumn(4).width=10; gs.getColumn(5).width=10; gs.getColumn(6).width=12; gs.getColumn(7).width=20;
+    for(let w=0;w<totalWks;w++) gs.getColumn(8+w).width=3.2;
+    // Header row
+    const gHdr=gs.getRow(1); gHdr.height=22;
+    ['Task','Category','Sub-Category','Start Wk','End Wk','Dur (wks)','Dependencies'].forEach((h,i)=>{
+      const c=gHdr.getCell(i+1);c.value=h;c.fill=headerFill;c.font={bold:true,color:PURPLE,size:10};c.alignment={vertical:'middle'};c.border={bottom:{style:'thin',color:PURPLE}};
+    });
+    for(let w=0;w<totalWks;w++){const c=gHdr.getCell(8+w);c.value=w+1;c.fill=headerFill;c.font={bold:true,color:PURPLE,size:7};c.alignment={horizontal:'center',vertical:'middle'};c.border={bottom:{style:'thin',color:PURPLE}};}
+    // Build task name lookup for dependencies display
+    const taskById={};ganttTasks.forEach(t=>{taskById[t.id]=t.name;});
+    const defaultCatColors={planning:'FF6C5CE7',cicd:'FF00B894',container:'FF0984E3',k8s:'FFFD79A8',iac:'FFE17055',iam:'FFA29BFE',monitoring:'FF00CEC9',compliance:'FFFDCB6E',supply:'FF55EFC4'};
+    function catArgb(catKey){const hex=(ganttCats[catKey]?.color||'').replace('#','');return hex?'FF'+hex.toUpperCase():defaultCatColors[catKey]||'FFA29BFE';}
+    // Data rows
     ganttTasks.forEach((t,idx)=>{
-      const dr=gs.addRow({n:t.name,c:t.category,s:t.start!=null?t.start+1:'',d:t.duration,p:(t.deps||[]).join(', ')});
-      if(idx%2===0) dr.eachCell({includeEmpty:true},cell=>{cell.fill=altFill;});
+      const row=gs.getRow(idx+2); row.height=18;
+      const depNames=(t.deps||[]).map(d=>taskById[d]||String(d)).join(', ');
+      const startWeek=(t.start!=null?t.start+1:'');
+      const endWeek=(t.start!=null?(t.start+(t.duration||1)):'');
+      row.getCell(1).value=t.name; row.getCell(2).value=ganttCats[t.category]?.label||t.category;
+      row.getCell(3).value=t.subCategory||''; row.getCell(4).value=startWeek; row.getCell(5).value=endWeek;
+      row.getCell(6).value=t.duration; row.getCell(7).value=depNames;
+      if(idx%2===0)[1,2,3,4,5,6,7].forEach(c=>{row.getCell(c).fill=altFill;});
+      // Week bars
+      const argb=catArgb(t.category); const barFill={type:'pattern',pattern:'solid',fgColor:{argb}};
+      const start=t.start||0; const end=Math.min(start+(t.duration||1),totalWks);
+      for(let w=0;w<totalWks;w++){
+        const cell=row.getCell(8+w);
+        if(w>=start&&w<end){cell.fill=barFill;}
+        else if(idx%2===0){cell.fill=altFill;}
+        cell.border={left:{style:'thin',color:{argb:'FFE0DFFF'}},right:{style:'thin',color:{argb:'FFE0DFFF'}}};
+      }
+    });
+    // Category legend below
+    const legendStart=ganttTasks.length+3;
+    const lgHdr=gs.getRow(legendStart);lgHdr.getCell(1).value='Category Legend';lgHdr.getCell(1).font={bold:true,color:PURPLE};
+    Object.entries(ganttCats).forEach(([k,v],i)=>{
+      const r=gs.getRow(legendStart+1+i);
+      r.getCell(1).value=v.label||k;
+      r.getCell(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:catArgb(k)}};
+      r.getCell(1).font={bold:true,color:{argb:'FFFFFFFF'}}; r.height=16;
     });
   }
 
-  /* SHEET 10: WorkPlan */
+  /* SHEET 12: WorkPlan */
   const wpData=dbRow.workplan||{};
   const milestones=wpData.milestones||[], teamRoles=wpData.teamRoles||[], riskItems=wpData.riskItems||[];
   if (secIncludes('workplan') && (milestones.length||teamRoles.length||riskItems.length)) {
@@ -629,7 +921,83 @@ async function generateExcelBuffer(dbRow, images, exportSections) {
     }
   }
 
-  /* SHEET 11: All_Diagrams */
+  /* SHEET 13: Assessment & Planning Heatmap */
+  if (secIncludes('assessment')) {
+    const hm=wb.addWorksheet('Heatmap');
+    hm.getColumn(1).width=30; [2,3,4,5,6,7,8,9,10,11].forEach(c=>hm.getColumn(c).width=11);
+    const resp2=dbRow.responses||{};
+    function heatColor(score){
+      if(score===null)return 'FFD0D0E0'; // not assessed — grey
+      if(score>=0.9)return 'FF00B894';
+      if(score>=0.75)return 'FF55EFC4';
+      if(score>=0.6)return 'FFFFD166';
+      if(score>=0.4)return 'FFFDCB6E';
+      if(score>=0.2)return 'FFFAB1A0';
+      return 'FFE63757';
+    }
+    function heatFont(score){return score!==null&&score>=0.6?'FF1A1A2E':'FFFFFFFF';}
+    let hmCur=1;
+    // Title
+    const hmTitle=hm.getRow(hmCur++);
+    hmTitle.getCell(1).value='Assessment & Planning Heatmap';
+    hmTitle.getCell(1).font={bold:true,size:14,color:PURPLE}; hmTitle.getCell(1).fill=titleFill;
+    hm.mergeCells(hmCur-1,1,hmCur-1,11); hmTitle.height=26; hmCur++;
+    // ── Section A: Per-category compliance overview ──
+    hmCur=addSectionBanner(hm,'Category Compliance Overview',hmCur);
+    const ovHdr=['Category','Total','Assessed','Pass','Fail','Partial','N/A','Skipped','Score %','Grade'];
+    ovHdr.forEach((h,i)=>{const c=hm.getRow(hmCur).getCell(i+1);c.value=h;c.font={bold:true,color:PURPLE,size:10};c.fill=headerFill;c.alignment={horizontal:'center',vertical:'middle'};c.border={bottom:{style:'thin',color:PURPLE}};});
+    hm.getRow(hmCur).height=18; hmCur++;
+    ASSESSMENT_CATS.forEach((cat,ci)=>{
+      const items=cat.items; const total=items.length;
+      let pass=0,fail=0,partial=0,na=0,skip=0;
+      items.forEach(it=>{const r=resp2[it.id]||{};const s=r.status||'';if(s==='pass')pass++;else if(s==='fail')fail++;else if(s==='partial')partial++;else if(s==='na')na++;else skip++;});
+      const assessed=pass+fail+partial; const scoreDenom=assessed;
+      const score=scoreDenom>0?(pass+partial*0.5)/scoreDenom:null;
+      const scorePct=score!==null?Math.round(score*100)+'%':'—';
+      const grade=score===null?'—':score>=0.9?'A':score>=0.75?'B':score>=0.6?'C':score>=0.4?'D':'F';
+      const row=hm.getRow(hmCur++); row.height=18;
+      row.getCell(1).value=`${cat.i} ${cat.t}`;
+      [total,assessed,pass,fail,partial,na,skip,scorePct,grade].forEach((v,i)=>{row.getCell(i+2).value=v;row.getCell(i+2).alignment={horizontal:'center'};});
+      // Colour the Score % and Grade cells
+      const argb=heatColor(score); const fargb=heatFont(score);
+      [9,10].forEach(c=>{row.getCell(c).fill={type:'pattern',pattern:'solid',fgColor:{argb}};row.getCell(c).font={bold:true,color:{argb:fargb}};});
+      // Fail count in red if > 0
+      if(fail>0){row.getCell(5).font={bold:true,color:{argb:'FFE63757'}};}
+      if(ci%2===0)[1,2,3,4,6,7,8].forEach(c=>{if(!row.getCell(c).fill?.fgColor?.argb?.startsWith('FFE6'))row.getCell(c).fill=altFill;});
+    });
+    hmCur+=2;
+    // ── Section B: Severity Breakdown heatmap ──
+    hmCur=addSectionBanner(hm,'Severity Breakdown by Category',hmCur);
+    // Severity cols: Crit Pass/Total | High | Med | Low
+    const sevHdrs=['Category','Critical','','High','','Medium','','Low','','Overall %'];
+    const sevSubHdrs=['','Pass','Total','Pass','Total','Pass','Total','Pass','Total',''];
+    sevHdrs.forEach((h,i)=>{const c=hm.getRow(hmCur).getCell(i+1);c.value=h;c.font={bold:true,color:PURPLE,size:10};c.fill=headerFill;c.alignment={horizontal:'center',vertical:'middle'};});
+    hm.getRow(hmCur).height=16; hmCur++;
+    sevSubHdrs.forEach((h,i)=>{const c=hm.getRow(hmCur).getCell(i+1);c.value=h;c.font={bold:false,color:PURPLE,size:9};c.fill=headerFill;c.alignment={horizontal:'center',vertical:'middle'};});
+    hm.getRow(hmCur).height=14; hmCur++;
+    ASSESSMENT_CATS.forEach((cat,ci)=>{
+      const row=hm.getRow(hmCur++); row.height=18;
+      row.getCell(1).value=`${cat.i} ${cat.t}`; if(ci%2===0)row.getCell(1).fill=altFill;
+      const sevs=['critical','high','medium','low']; let totalPass=0,totalActive=0;
+      sevs.forEach((sv,si)=>{
+        const sItems=cat.items.filter(it=>it.sv===sv);
+        let sp=0,stotal=0;
+        sItems.forEach(it=>{const r=resp2[it.id]||{};const s=r.status||'';if(s&&s!=='na'){stotal++;if(s==='pass')sp++;else if(s==='partial')sp+=0.5;}});
+        totalPass+=sp; totalActive+=stotal;
+        const col=2+si*2; const score=stotal>0?sp/stotal:null;
+        const argb=heatColor(score); const fargb=heatFont(score);
+        row.getCell(col).value=Math.round(sp); row.getCell(col).alignment={horizontal:'center'};
+        row.getCell(col+1).value=stotal||'—'; row.getCell(col+1).alignment={horizontal:'center'};
+        if(score!==null){row.getCell(col).fill={type:'pattern',pattern:'solid',fgColor:{argb}};row.getCell(col).font={bold:true,color:{argb:fargb}};}
+        else if(ci%2===0){row.getCell(col).fill=altFill;row.getCell(col+1).fill=altFill;}
+      });
+      const overallScore=totalActive>0?totalPass/totalActive:null;
+      row.getCell(10).value=overallScore!==null?Math.round(overallScore*100)+'%':'—'; row.getCell(10).alignment={horizontal:'center'};
+      if(overallScore!==null){const argb=heatColor(overallScore);row.getCell(10).fill={type:'pattern',pattern:'solid',fgColor:{argb}};row.getCell(10).font={bold:true,color:{argb:heatFont(overallScore)}};}
+    });
+  }
+
+  /* SHEET 12: All_Diagrams */
   if (images.length>0) {
     const imgSheet=wb.addWorksheet('All_Diagrams'); setImageColWidths(imgSheet);
     const tCell=imgSheet.getRow(1).getCell(1);

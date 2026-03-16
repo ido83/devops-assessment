@@ -55,11 +55,75 @@ services:
         REACT_APP_GIT_BRANCH: ${GIT_BRANCH:-main}
     container_name: secassess-app
     ports:
-      - "3000:8080"
+      - "8080:8080"
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+  # ── Security scan services ───────────────────────────────────────────────
+  # Run individually: docker compose --profile scan run --rm <service>
+  # Or via Makefile:  make scan-secrets | scan-sast | scan-vulns | scan-images | scan-dive | scan
+
+  gitleaks:
+    image: zricethezav/gitleaks:latest
+    container_name: secassess-gitleaks
+    volumes:
+      - .:/repo:ro
+    command: detect --source=/repo --verbose
+    profiles: [scan]
+
+  semgrep:
+    image: semgrep/semgrep:latest
+    container_name: secassess-semgrep
+    volumes:
+      - .:/src:ro
+    working_dir: /src
+    command: semgrep scan --config=auto --error --exclude=node_modules --exclude=build /src
+    profiles: [scan]
+
+  trivy-fs:
+    image: aquasec/trivy:latest
+    container_name: secassess-trivy-fs
+    volumes:
+      - .:/workspace:ro
+      - trivy-cache:/root/.cache/trivy
+    command: fs --scanners vuln,secret,misconfig /workspace
+    profiles: [scan]
+
+  trivy-backend:
+    image: aquasec/trivy:latest
+    container_name: secassess-trivy-backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - trivy-cache:/root/.cache/trivy
+    command: image secassess-api
+    profiles: [scan]
+
+  trivy-frontend:
+    image: aquasec/trivy:latest
+    container_name: secassess-trivy-frontend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - trivy-cache:/root/.cache/trivy
+    command: image secassess-app
+    profiles: [scan]
+
+  dive-backend:
+    image: wagoodman/dive:latest
+    container_name: secassess-dive-backend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: secassess-api --ci
+    profiles: [scan]
+
+  dive-frontend:
+    image: wagoodman/dive:latest
+    container_name: secassess-dive-frontend
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: secassess-app --ci
+    profiles: [scan]
 
 secrets:
   db_pass:
@@ -67,4 +131,6 @@ secrets:
 
 volumes:
   pg-data:
+    driver: local
+  trivy-cache:
     driver: local

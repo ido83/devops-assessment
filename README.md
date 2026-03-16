@@ -50,7 +50,7 @@ secassess/
 │   │       └── App.css              # Dark theme, responsive, print styles
 │   └── public/
 │       └── index.html
-├── docker-compose.yml          # 3-service stack (postgres, backend, frontend)
+├── docker-compose.yml          # 3-service stack + 7 scan services (gitleaks, semgrep, trivy, dive) via `scan` profile
 ├── Makefile                    # make up / down / build / logs — injects git branch+SHA automatically
 ├── secrets/
 │   └── db_pass.txt.example     # Copy to db_pass.txt — set a strong password (gitignored)
@@ -102,6 +102,12 @@ open http://localhost:3000
 | `make build` | Build images without starting containers |
 | `make down` | Stop and remove all containers |
 | `make logs` | Follow logs for all services |
+| `make scan` | Run all source-level scans: Gitleaks + Semgrep SAST + Trivy FS |
+| `make scan-secrets` | Gitleaks — detect secrets in git history |
+| `make scan-sast` | Semgrep — SAST static analysis of source code |
+| `make scan-vulns` | Trivy fs — CVE + secret + misconfiguration scan of the repo |
+| `make scan-images` | Trivy image — CVE scan of built Docker images (run `make build` first) |
+| `make scan-dive` | Dive — Docker image layer efficiency analysis (run `make build` first) |
 
 > **Why inject `GIT_BRANCH` and `GIT_SHA`?**
 > The UI header displays `v<version> · <branch> · <sha>` (e.g. `v2.1.0 · v21 · 3cc00e3`).
@@ -180,6 +186,36 @@ REACT_APP_API_URL=http://localhost:4000/api npm start
 - **SBOM generation** — CycloneDX format for supply chain transparency
 - **Docker non-root** — backend runs as `secassess` user (UID 1001)
 
+## 🛡️ Security Scanning (Local)
+
+All scanners run as Docker Compose services under the `scan` profile — no local tool installation needed.
+
+```bash
+# Run all source-level scans in one command
+make scan
+
+# Individual scans
+make scan-secrets   # Gitleaks   — secrets in git history
+make scan-sast      # Semgrep    — SAST (backend + frontend source)
+make scan-vulns     # Trivy fs   — CVEs, secrets, misconfigs in repo files
+
+# Image scans (build images first with: make build)
+make scan-images    # Trivy image — CVE scan of secassess-api + secassess-app
+make scan-dive      # Dive        — layer efficiency analysis of both images
+```
+
+### Scanner details
+
+| Scanner | Tool | What it checks |
+|---------|------|----------------|
+| **Secret scan** | [Gitleaks](https://github.com/gitleaks/gitleaks) | Hardcoded secrets, API keys, tokens in git history |
+| **SAST** | [Semgrep](https://semgrep.dev) | Code vulnerabilities, injection flaws, insecure patterns |
+| **Filesystem vulns** | [Trivy fs](https://aquasecurity.github.io/trivy) | CVEs in dependencies, secrets in files, IaC misconfigurations |
+| **Image CVEs** | [Trivy image](https://aquasecurity.github.io/trivy) | OS + library CVEs in built Docker images |
+| **Image layers** | [Dive](https://github.com/wagoodman/dive) | Layer efficiency, wasted space, image optimization |
+
+> **Docker socket note:** `scan-images` and `scan-dive` require access to `/var/run/docker.sock` (standard on Linux/macOS and Docker Desktop on Windows).
+
 ## 🔄 CI/CD Pipeline (GitHub Actions)
 
 Triggered on push to `main` and all PRs:
@@ -244,6 +280,7 @@ CREATE TABLE assessments (
 
 ## 📝 Version History
 
+- **v23** — Local security scanning: Gitleaks, Semgrep SAST, Trivy (fs + image), Dive — all as Docker Compose `scan` profile services; `make scan` / `scan-secrets` / `scan-sast` / `scan-vulns` / `scan-images` / `scan-dive` Makefile targets
 - **v22** — DevOps circular-arrows logo (devops-2.svg inline, 8-stage multi-color: violet→indigo→lavender→sky-blue→cyan→mint→green→teal), logo scaled to 104×55 px, Dashboard auto-refresh after Truncate DB, logo proportions and spacing fix
 - **v21** — Promotion Workflows tab (8 templates, 10 node types), Excel inline diagram images per workflow row (rounded corners, correct aspect ratio), All_Diagrams sheet includes all 5 diagram sections, Makefile (`make up/down/build/logs`), always-mounted diagram tabs for reliable image capture, DevOps infinity logo, transparent header, branch+SHA in version line, ZIP includes PDF+XLSX+images/
 - **v15** — Versioning tab, server-side PDF/SQL/XML/ZIP exports, GitHub Actions CI/CD, SBOM, SemVer, enhanced Excel export, input validation, secrets management
