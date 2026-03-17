@@ -1,4 +1,4 @@
-# SecAssess v2.1.0
+# SecAssess v2.2.0
 
 **Comprehensive DevOps & DevSecOps Platform Assessment Tool**
 
@@ -108,6 +108,9 @@ open http://localhost:3000
 | `make scan-vulns` | Trivy fs — CVE + secret + misconfiguration scan of the repo |
 | `make scan-images` | Trivy image — CVE scan of built Docker images (run `make build` first) |
 | `make scan-dive` | Dive — Docker image layer efficiency analysis (run `make build` first) |
+| `make db-reset-pass` | Recreate `secrets/db_pass.txt` cleanly (no Windows line endings) |
+| `make db-reset-data` | Wipe Postgres volume — forces clean re-init on next `make up` |
+| `make db-fresh` | Full fresh setup: wipe volumes + set password + bring stack up |
 
 > **Why inject `GIT_BRANCH` and `GIT_SHA`?**
 > The UI header displays `v<version> · <branch> · <sha>` (e.g. `v2.1.0 · v21 · 3cc00e3`).
@@ -326,6 +329,7 @@ docker compose logs secassess-api | tail -20
 
 ## 📝 Version History
 
+- **v24** — Makefile DB maintenance targets: `make db-reset-pass` (recreate password without line-ending issues), `make db-reset-data` (wipe Postgres volume), `make db-fresh` (full clean setup); version bump to v2.2.0
 - **v23** — Local security scanning: Gitleaks, Semgrep SAST, Trivy (fs + image), Dive — all as Docker Compose `scan` profile services; `make scan` / `scan-secrets` / `scan-sast` / `scan-vulns` / `scan-images` / `scan-dive` Makefile targets
 - **v22** — DevOps circular-arrows logo (devops-2.svg inline, 8-stage multi-color: violet→indigo→lavender→sky-blue→cyan→mint→green→teal), logo scaled to 104×55 px, Dashboard auto-refresh after Truncate DB, logo proportions and spacing fix
 - **v21** — Promotion Workflows tab (8 templates, 10 node types), Excel inline diagram images per workflow row (rounded corners, correct aspect ratio), All_Diagrams sheet includes all 5 diagram sections, Makefile (`make up/down/build/logs`), always-mounted diagram tabs for reliable image capture, DevOps infinity logo, transparent header, branch+SHA in version line, ZIP includes PDF+XLSX+images/
