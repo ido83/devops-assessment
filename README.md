@@ -278,6 +278,52 @@ CREATE TABLE assessments (
 );
 ```
 
+## ⚠️ Known Issues
+
+### DB Login / Authentication Failures
+
+If the backend cannot connect to PostgreSQL (e.g. `password authentication failed` or container restart loop), follow these steps one by one:
+
+**Step 1 — Nuclear reset (wipe everything)**
+```bash
+docker compose down -v --remove-orphans
+docker volume rm $(docker volume ls -q | grep secassess) 2>/dev/null || true
+```
+
+**Step 2 — Check exactly what's in your password file**
+```bash
+cat -A secrets/db_pass.txt   # shows hidden chars like ^M (Windows line endings)
+wc -c secrets/db_pass.txt    # shows byte count
+```
+
+**Step 3 — Recreate the file cleanly (no trailing newline issues)**
+```bash
+printf 'StrongPass123!XYZ' > secrets/db_pass.txt
+cat -A secrets/db_pass.txt   # should show:  StrongPass123!XYZ$   (just one $)
+```
+
+**Step 4 — Check your `.env`**
+```bash
+cat .env
+```
+It must contain exactly:
+```
+DB_NAME=secassess
+DB_USER=secassess
+```
+
+**Step 5 — Fresh start**
+```bash
+docker compose up --build -d
+sleep 15
+docker compose logs secassess-db | tail -20
+docker compose logs secassess-api | tail -20
+```
+
+> **Root cause:** PostgreSQL initializes the DB user + password only on first volume creation. If the volume already exists with a different password, the new secret file is ignored. Step 1 wipes the volume so Postgres re-initializes cleanly. Windows line endings (`\r\n`) in `db_pass.txt` are a common cause — `printf` avoids them.
+
+---
+
 ## 📝 Version History
 
 - **v23** — Local security scanning: Gitleaks, Semgrep SAST, Trivy (fs + image), Dive — all as Docker Compose `scan` profile services; `make scan` / `scan-secrets` / `scan-sast` / `scan-vulns` / `scan-images` / `scan-dive` Makefile targets
